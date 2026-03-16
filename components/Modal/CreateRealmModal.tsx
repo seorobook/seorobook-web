@@ -4,7 +4,6 @@ import Modal from './Modal'
 import { useModal } from '@/app/hooks/useModal'
 import BasicButton from '../BasicButton'
 import BasicInput from '../BasicInput'
-import { createClient } from '@/utils/supabase/client'
 import { toast } from 'react-toastify'
 import { useRouter } from 'next/navigation' 
 import revalidate from '@/utils/revalidate'
@@ -22,40 +21,41 @@ const CreateRealmModal:React.FC = () => {
     const router = useRouter()
 
     async function createRealm() {
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-
-        if (!user) {
-            return
-        }
-
-        const uid = user.id
-
         setLoading(true)
 
         const realmData: any = {
-            owner_id: uid,
             name: realmName,
         }
         if (useDefaultMap) {
             realmData.map_data = defaultMap
         }
 
-        const { data, error } = await supabase.from('realms').insert(realmData).select()
+        try {
+            const res = await fetch('/api/realms', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(realmData),
+            })
 
-        if (error) {
-            toast.error(error?.message)
-        } 
+            if (!res.ok) {
+                const message = await res.text()
+                toast.error(message || 'Failed to create space')
+                setLoading(false)
+                return
+            }
 
-        if (data) {
+            const { realm } = await res.json()
+
             setRealmName('')
             revalidate('/app')
             setModal('None')
             toast.success('Your space has been created!')
-            router.push(`/editor/${data[0].id}`)
+            router.push(`/editor/${realm.id}`)
+        } finally {
+            setLoading(false)
         }
-
-        setLoading(false)
     }
 
     function onChange(e: React.ChangeEvent<HTMLInputElement>) {

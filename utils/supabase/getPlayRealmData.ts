@@ -1,35 +1,43 @@
 'use server'
 import 'server-only'
-import { createClient } from '@supabase/supabase-js'
+import { auth } from '../../lib/auth'
+import { getRealmByShareId } from '../../data/realms'
 
-export async function getPlayRealmData(accessToken: string, shareId: string) {
-    const supabase = createClient(
-        process.env.SEORO_PUBLIC_SUPABASE_URL!,
-        process.env.SEORO_SUPABASE_SERVICE_ROLE_KEY!,
-    )
-
-    const { data: user, error: userError } = await supabase.auth.getUser(accessToken)
-
-    if (userError) {
-        return { data: null, error: userError }
-    }
-
-    const { data, error } = await supabase.from('realms').select('map_data, owner_id, only_owner, name').eq('share_id', shareId).single()
-
-    if (!data || error) {
-        return { data: null, error }
-    }
-
-    const realm = data
-
-    // if we are the owner, always return the data
-    if (realm.owner_id === user.user.id) {
-        return { data, error }
-    }
-
-    if (realm.only_owner) {
-        return { data: null, error: { message: 'only owner' }}
-    }
-
-    return { data, error }
+type PlayRealmData = {
+  map_data: any
+  owner_id: string
+  only_owner: boolean | null
+  name: string
 }
+
+export async function getPlayRealmData(_accessToken: string, shareId: string) {
+  const { data: session } = await auth.getSession()
+
+  if (!session?.user) {
+    return { data: null, error: { message: 'Unauthorized' } }
+  }
+
+  const realm = await getRealmByShareId(shareId)
+
+  if (!realm) {
+    return { data: null, error: { message: 'Realm not found' } }
+  }
+
+  const data: PlayRealmData = {
+    map_data: realm.map_data,
+    owner_id: realm.owner_id,
+    only_owner: realm.only_owner,
+    name: realm.name,
+  }
+
+  if (realm.owner_id === session.user.id) {
+    return { data, error: null }
+  }
+
+  if (realm.only_owner) {
+    return { data: null, error: { message: 'only owner' } }
+  }
+
+  return { data, error: null }
+}
+

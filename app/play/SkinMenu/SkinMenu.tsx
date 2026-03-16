@@ -6,8 +6,6 @@ import { ArrowFatLeft, ArrowFatRight } from '@phosphor-icons/react'
 import BasicLoadingButton from '@/components/BasicLoadingButton'
 import { skins, defaultSkin } from '@/utils/pixi/Player/skins'
 import signal from '@/utils/signal'
-import { createClient } from '@/utils/supabase/client'
-import revalidate from '@/utils/revalidate'
 import { toast } from 'react-toastify'
 
 type SkinMenuProps = {
@@ -20,8 +18,6 @@ const SkinMenu:React.FC<SkinMenuProps> = () => {
 
     const [skinIndex, setSkinIndex] = useState<number>(skins.indexOf(defaultSkin))
     const [loading, setLoading] = useState(false)
-
-    const supabase = createClient()
 
     function decrement() {
         setSkinIndex((prevIndex) => (prevIndex - 1 + skins.length) % skins.length)
@@ -45,23 +41,27 @@ const SkinMenu:React.FC<SkinMenuProps> = () => {
 
     async function switchSkins() {
         const newSkin = skins[skinIndex]
-        // update profile on supabase with different skin
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
 
-        const { error } = await supabase
-                .from('profiles')
-                .update({ skin: newSkin })
-                .eq('id', user.id)
+        try {
+            const res = await fetch('/api/profile/skin', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ skin: newSkin }),
+            })
 
-        if (error) {
-            toast.error(error.message)
-            return
+            if (!res.ok) {
+                const message = await res.text()
+                toast.error(message || 'Failed to update skin')
+                return
+            }
+
+            signal.emit('switchSkin', newSkin)
+            setModal('None')
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to update skin')
         }
-
-        revalidate('/play/[id]')
-        signal.emit('switchSkin', newSkin)
-        setModal('None')
     }
 
     async function handleSwitchSkinsClick() {

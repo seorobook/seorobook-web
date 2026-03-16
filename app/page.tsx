@@ -16,7 +16,7 @@ export default function Index() {
           </p>
         </div>
         <div className='flex flex-col items-center justify-center'>
-          <Link href='/app'>
+          <Link href='/signin'>
             <BasicButton>
               시작하기
             </BasicButton>

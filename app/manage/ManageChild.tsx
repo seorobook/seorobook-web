@@ -2,7 +2,6 @@
 import React, { useState } from 'react'
 import Dropdown from '@/components/Dropdown'
 import BasicButton from '@/components/BasicButton'
-import { createClient } from '@/utils/supabase/client'
 import { toast } from 'react-toastify'
 import revalidate from '@/utils/revalidate'
 import { useModal } from '../hooks/useModal'
@@ -26,8 +25,6 @@ const ManageChild:React.FC<ManageChildProps> = ({ realmId, startingShareId, star
     const [name, setName] = useState(startingName)
     const { setModal, setLoadingText } = useModal()
 
-    const supabase = createClient()
-
     async function save() {
         if (name.trim() === '') {
             toast.error('Name cannot be empty!')
@@ -37,22 +34,28 @@ const ManageChild:React.FC<ManageChildProps> = ({ realmId, startingShareId, star
         setModal('Loading')
         setLoadingText('Saving...')
 
-        const { error } = await supabase
-            .from('realms')
-            .update({ 
+        try {
+            const res = await fetch(`/api/realms/${realmId}/meta`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
                     only_owner: onlyOwner,
                     name: name,
-                })
-            .eq('id', realmId)
+                }),
+            })
 
-        if (error) {
-            toast.error(error.message)
-        } else {
-            toast.success('Saved!')
+            if (!res.ok) {
+                const message = await res.text()
+                toast.error(message || 'Failed to save')
+            } else {
+                toast.success('Saved!')
+            }
+        } finally {
+            revalidate('/manage/[id]')
+            setModal('None')
         }
-
-        revalidate('/manage/[id]')
-        setModal('None')
     }
 
     function copyLink() {
@@ -66,24 +69,31 @@ const ManageChild:React.FC<ManageChildProps> = ({ realmId, startingShareId, star
         setLoadingText('Generating new link...')
 
         const newShareId = uuidv4()
-        const { error } = await supabase
-            .from('realms')
-            .update({ 
-                share_id: newShareId
-                })
-            .eq('id', realmId)
 
-        if (error) {
-            toast.error(error.message)
-        } else {
-            setShareId(newShareId)
-            const link = process.env.SEORO_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL + '/play/' + realmId + '?shareId=' + newShareId
-            navigator.clipboard.writeText(link)
-            toast.success('New link copied!')
+        try {
+            const res = await fetch(`/api/realms/${realmId}/meta`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    share_id: newShareId,
+                }),
+            })
+
+            if (!res.ok) {
+                const message = await res.text()
+                toast.error(message || 'Failed to generate link')
+            } else {
+                setShareId(newShareId)
+                const link = (process.env.SEORO_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL) + '/play/' + realmId + '?shareId=' + newShareId
+                navigator.clipboard.writeText(link)
+                toast.success('New link copied!')
+            }
+        } finally {
+            revalidate('/manage/[id]')
+            setModal('None')
         }
-
-        revalidate('/manage/[id]')
-        setModal('None')
     }
 
     function onNameChange(e: React.ChangeEvent<HTMLInputElement>) {

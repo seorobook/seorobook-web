@@ -132,3 +132,4 @@
 
 - `utils/supabase/*`, `/api/realms/*`, `data/realms.ts`, `RealmsMenu` 등 **레거시 realm/supabase 경로 제거 완료**
 - `saveLibrary`는 `utils/server-actions/saveLibrary.ts`로 이관하여 네이밍/레이어 정리
+- 배포 참고: Vercel Production에 `NEON_AUTH_COOKIE_SECRET` 환경변수 필수

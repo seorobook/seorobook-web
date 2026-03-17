@@ -81,12 +81,9 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
     - Remove any Supabase-related keys.
     - Ensure only Neon-related variables (e.g. `BACKEND_DATABASE_URL`) remain.
 
-- **3.3. Remove Supabase packages**
-  - From `package.json`:
-    - Remove `@supabase/ssr`, `@supabase/supabase-js`, and any other Supabase-related dependencies.
-  - Reinstall dependencies and run typecheck/build to confirm removal:
-    - `pnpm install` / `npm install` / `yarn` as appropriate.
-    - `next build` to surface any missed references.
+- **3.3. Remove Supabase packages (if any remain transitively)**
+  - Ensure `package.json` has no direct Supabase dependencies.
+  - If your lockfile still pulls Supabase packages transitively, track down which dependency pulls them and decide if it's acceptable.
 
 ---
 
@@ -116,7 +113,7 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
 - **4.4. Update backend data access to Neon**
   - For each backend route/socket event that hits Supabase tables:
     - Rewrite the logic to use `backend/src/db.ts` and SQL queries that match the Neon schema.
-  - Keep the backend schema assumptions aligned with the same tables as the frontend DAL (`realms`, `profiles`, `visited_realms`, etc.).
+  - Keep the backend schema assumptions aligned with the same tables as the frontend DAL (`libraries`, `profiles`, `visited_libraries`, etc.).
 
 - **4.5. Smoke test backend flows**
   - Validate:
@@ -131,9 +128,9 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
 - **5.1. Define core regression scenarios**
   - Based on the high-level plan, confirm at least:
     1. Sign up and login via Neon Auth.
-    2. `/app`: list realms for the logged-in user; create a new realm and see it appear.
+    2. `/app`: land in app shell; default library is available.
     3. `/editor/[id]`: open editor, modify map, save; reload to confirm persistence.
-    4. `/play/[id]`: enter realm via direct link or share link; skin changes persist via profile/visited-realms logic.
+    4. `/play/[id]`: enter library via direct link or share link; skin changes persist via profile/visited-libraries logic.
     5. Logout and attempt to access protected routes; verify redirect to `/signin`.
 
 - **5.2. Run end-to-end manual tests**

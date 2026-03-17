@@ -43,7 +43,7 @@
 | UI 문구 | not-found: "realm" → "library" | 완료 |
 | UI 문구 | SpecialTiles: "Realm" → "library" | 완료 |
 | 백엔드 주석 | session, index: realm → library | 완료 |
-| Supabase 참조 | utils/supabase/server, middleware, generateToken, backend getSession | **미해결** — Auth는 Neon; Supabase 의존 별도 정리 필요 |
+| Supabase/realm 레거시 경로 | `utils/supabase/*`, `/api/realms/*`, `data/realms.ts` 등 | ✅ 정리 완료 (삭제/이관) |
 
 ### 아직 구현 안 된 것 (MEMO §6 MVP 기준)
 
@@ -125,3 +125,10 @@
 - **브라우저 스모크 테스트(추가)**: `/app` → `/app/visits` 방문 생성 → `/visit/[id]` 입장(로컬 플레이) → `/app/items`, `/app/feed` 라우팅 확인. Next 런타임 에러 없음.
 - **참고(방어 로직)**: 개발 환경에서 `profiles` 테이블이 아직 없을 때 `/app`이 완전히 죽지 않도록 `ensureProfile/getProfileById`는 테이블 미존재(42P01) 시 no-op/null 처리.
 - **테스트 계정**: E2E/브라우저 로그인 테스트 시 `.env.test`의 `TEST_EMAIL`, `TEST_PASSWORD` 사용. 코드/문서에 값 하드코딩 금지. example.com 등 의심 도메인 사용 금지.
+
+---
+
+## 최근 정리 (레거시 제거)
+
+- `utils/supabase/*`, `/api/realms/*`, `data/realms.ts`, `RealmsMenu` 등 **레거시 realm/supabase 경로 제거 완료**
+- `saveLibrary`는 `utils/server-actions/saveLibrary.ts`로 이관하여 네이밍/레이어 정리

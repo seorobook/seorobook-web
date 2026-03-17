@@ -2,19 +2,17 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { updateRealmMeta } from "@/data/realms"
 
-type Params = {
-  params: {
-    id: string
-  }
-}
-
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const { data: session } = await auth.getSession()
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json().catch(() => ({}))
 
     const meta: {
@@ -35,7 +33,7 @@ export async function PATCH(request: Request, { params }: Params) {
       meta.share_id = body.share_id
     }
 
-    await updateRealmMeta(params.id, session.user.id, meta)
+    await updateRealmMeta(id, session.user.id, meta)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

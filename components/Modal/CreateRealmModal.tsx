@@ -64,7 +64,7 @@ const CreateRealmModal:React.FC = () => {
     }
 
     return (
-        <Modal open={modal === 'Create Realm'} closeOnOutsideClick>
+        <Modal open={modal === 'Create Library'} closeOnOutsideClick>
             <div className='flex flex-col items-center p-4 w-[400px] gap-4'>
                 <h1 className='text-2xl'>Create a Space</h1>
                 <BasicInput label={'Space Name'} className='w-[280px]' value={realmName} onChange={onChange} maxLength={32}/>

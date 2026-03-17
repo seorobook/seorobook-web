@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { House, Package, Sparkle, Newspaper } from '@phosphor-icons/react'
+import { House, Users, Newspaper, Storefront, Gear } from '@phosphor-icons/react'
 
 type NavItem = {
   href: string
@@ -13,23 +13,24 @@ type NavItem = {
 
 const items: NavItem[] = [
   { href: '/app', label: '서재', icon: <House className="h-6 w-6" /> },
-  { href: '/app/items', label: '아이템', icon: <Package className="h-6 w-6" /> },
-  { href: '/app/butler', label: '집사', icon: <Sparkle className="h-6 w-6" /> },
+  { href: '/app/sero', label: '서로', icon: <Users className="h-6 w-6" /> },
   { href: '/app/feed', label: '피드', icon: <Newspaper className="h-6 w-6" /> },
+  { href: '/app/shop', label: '상점', icon: <Storefront className="h-6 w-6" /> },
+  { href: '/app/settings', label: '설정', icon: <Gear className="h-6 w-6" /> },
 ]
 
 export default function LeftNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="h-full w-[88px] shrink-0 bg-secondary border-r border-primary/30 flex flex-col items-center py-4 gap-2 select-none">
+    <nav className="h-16 w-full bg-secondary border-t border-primary/30 flex items-center justify-around px-2 select-none">
       {items.map((it) => {
         const active = pathname === it.href
         return (
           <Link
             key={it.href}
             href={it.href}
-            className={`w-[72px] h-[72px] rounded-xl grid place-items-center hover:bg-light-secondary animate-colors ${
+            className={`h-12 w-16 rounded-xl grid place-items-center hover:bg-light-secondary animate-colors ${
               active ? 'bg-light-secondary' : ''
             }`}
             aria-label={it.label}
@@ -37,7 +38,7 @@ export default function LeftNav() {
           >
             <div className="flex flex-col items-center gap-1 text-white">
               {it.icon}
-              <span className="text-[11px]">{it.label}</span>
+              <span className="text-[10px] leading-none">{it.label}</span>
             </div>
           </Link>
         )

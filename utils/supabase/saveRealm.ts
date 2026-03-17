@@ -1,13 +1,15 @@
 'use server'
 import 'server-only'
-import { RealmData } from '../pixi/types'
-import { RealmDataSchema } from '../pixi/zod'
+import { LibraryData } from '../pixi/types'
+import { LibraryDataSchema } from '../pixi/zod'
 import { formatForComparison, removeExtraSpaces } from '../removeExtraSpaces'
 import { auth } from '../../lib/auth'
 import { updateRealmMapData } from '../../data/realms'
 
-export async function saveRealm(_access_token: string, realmData: RealmData, id: string) {
-  const result = RealmDataSchema.safeParse(realmData)
+// Legacy endpoint: keep compiling for deployments that still call /api/realms.
+// Internally uses the current LibraryData schema.
+export async function saveRealm(_access_token: string, realmData: LibraryData, id: string) {
+  const result = LibraryDataSchema.safeParse(realmData)
   if (result.success === false) {
     return { error: { message: 'Invalid realm data.' } }
   }

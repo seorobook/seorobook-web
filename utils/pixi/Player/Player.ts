@@ -214,7 +214,8 @@ export class Player {
         PIXI.Ticker.shared.add(this.move)
 
         if (this.isLocal) {
-            server.socket.emit('movePlayer', { x, y })
+            // Offline mode: socket may not be connected/initialized.
+            server.socket?.emit?.('movePlayer', { x, y })
         }
     }
 

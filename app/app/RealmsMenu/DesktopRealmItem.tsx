@@ -1,3 +1,5 @@
+'use client'
+
 import { DotsThreeVertical, Link as LinkIcon, SignIn } from '@phosphor-icons/react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -19,7 +21,7 @@ const DesktopRealmItem:React.FC<DesktopRealmItemProps> = ({ name, id, shareId, s
     const router = useRouter()
     const menuRef = useRef<HTMLDivElement>(null)
     const dotsRef = useRef<HTMLDivElement>(null)
-    const { setRealmToDelete, setModal } = useModal()
+    const { setLibraryToDelete, setModal } = useModal()
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -39,8 +41,9 @@ const DesktopRealmItem:React.FC<DesktopRealmItemProps> = ({ name, id, shareId, s
     }
 
     function handleDelete() {
-        setRealmToDelete({ name, id })
-        setModal('Delete Realm')
+        // Legacy realms UI: reuse existing "Delete Library" modal.
+        setLibraryToDelete({ name, id })
+        setModal('Delete Library')
     }
 
     function getLink() {

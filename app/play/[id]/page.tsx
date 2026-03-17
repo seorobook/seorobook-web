@@ -22,8 +22,7 @@ export default async function Play({
     }
 
     await ensureProfile(session.user.id)
-    const { data: access } = await auth.getAccessToken().catch(() => ({ data: null as any }))
-    const accessToken = (access as any)?.accessToken || (access as any)?.access_token || ''
+    const accessToken = ''
 
     const [resolvedParams, resolvedSearch] = await Promise.all([params, searchParams])
     const library = resolvedSearch.shareId

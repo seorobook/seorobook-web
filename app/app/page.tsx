@@ -1,22 +1,42 @@
+import React from 'react'
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { ensureProfile, getProfileById } from '@/data/profiles'
+import { getOrCreateDefaultLibrary } from '@/data/libraries'
+import { formatEmailToName } from '@/utils/formatEmailToName'
+import { defaultSkin } from '@/utils/pixi/Player/skins'
+import SpaceClient from './SpaceClient'
+
+export const dynamic = 'force-dynamic'
+
 export default async function App() {
-    return (
-        <div className="p-6 flex flex-col gap-4">
-            <h1 className="text-2xl font-semibold">서로북</h1>
-            <p className="text-secondary">
-                왼쪽에서 기능을 선택하세요. (서재 / 아이템 / 집사 / 피드)
-            </p>
-            <div className="border border-secondary rounded-lg p-4 flex flex-col gap-2">
-                <h2 className="text-lg font-semibold">방문</h2>
-                <p className="text-secondary text-sm">
-                    방문 세션(약속/초대/시간 제한)을 만들고 링크로 입장합니다.
-                </p>
-                <a
-                    href="/app/visits"
-                    className="text-sm hover:underline w-fit"
-                >
-                    방문 관리 열기 →
-                </a>
-            </div>
-        </div>
-    )
+  const { data: session } = await auth.getSession()
+  if (!session?.user) return redirect('/signin')
+
+  await ensureProfile(session.user.id)
+  const [profile, defaultLibrary] = await Promise.all([
+    getProfileById(session.user.id),
+    getOrCreateDefaultLibrary(session.user.id),
+  ])
+
+  const displayName =
+    profile?.nickname?.trim() || (session.user.email ? formatEmailToName(session.user.email) : '게스트')
+
+  const skin = profile?.skin ?? defaultSkin
+
+  return (
+    <div className="h-full w-full bg-black">
+      {/* Desktop-only canvas. Mobile assumes no canvas. */}
+      <div className="hidden md:block h-full w-full">
+        <SpaceClient
+          mapData={defaultLibrary.map_data}
+          username={displayName}
+          libraryId={defaultLibrary.id}
+          uid={session.user.id}
+          initialSkin={skin}
+        />
+      </div>
+      <div className="md:hidden h-full w-full bg-primary" />
+    </div>
+  )
 }

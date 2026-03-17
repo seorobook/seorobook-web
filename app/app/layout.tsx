@@ -28,8 +28,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="w-full h-screen flex flex-row">
       <LeftNav />
       <div className="grow flex flex-row min-w-0">
-        {/* Center space (desktop-first). Mobile can hide via CSS later. */}
-        <div className="hidden lg:block w-[55%] min-w-[520px] border-r border-primary/30 bg-black">
+        {/* Center space (desktop-first). Hide only on small screens. */}
+        <div className="hidden md:block w-[55%] min-w-[520px] border-r border-primary/30 bg-black">
           <SpaceClient
             mapData={mapData}
             username={displayName}

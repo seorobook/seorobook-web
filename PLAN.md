@@ -1,36 +1,21 @@
-### Full Neon Migration – Phase 2 (Continuation)
+### Full Neon Migration – (Updated)
 
-We already have the high-level migration plan in `[.cursor/plans/full-neon-migration_2e46bd42.plan.md](/Users/minkeychang/seorobook/.cursor/plans/full-neon-migration_2e46bd42.plan.md)`, with early todos marked completed. This phase focuses on the remaining work: server Supabase utils → Neon DAL, client Supabase usage → API routes + DAL, final Supabase removal, backend Neon/JWT, and regression tests.
+We already have the high-level migration plan in `[.cursor/plans/full-neon-migration_2e46bd42.plan.md](/Users/minkeychang/seorobook/.cursor/plans/full-neon-migration_2e46bd42.plan.md)`. Since then, legacy `realms`/`utils/supabase` paths have been removed in favor of `libraries` + Neon DAL/API routes.
 
 ---
 
-### 1. Finish server Supabase utils → Neon DAL (`server-utils-to-dal`)
+### 1. Server legacy cleanup → DAL (`server-utils-to-dal`)
 
-- **1.1. Inventory existing Supabase server utilities**
-  - Open `utils/supabase` and list all files (e.g. `getVisitedRealms.ts`, `getPlayRealmData.ts`, `saveRealm.ts`, `updateVisitedRealms.ts`, etc.).
-  - For each file, note:
-    - Input parameters (including any `access_token`/`userId` assumptions).
-    - Tables/columns touched (e.g. `realms`, `profiles`, `visited_realms`).
-    - Return shape (raw rows vs. derived DTOs).
+- **1.1. Inventory remaining legacy server utilities**
+  - Ensure no remaining references to removed folders (ex: `utils/supabase`) or resources (ex: `realms`).
 
-- **1.2. Map each util to DAL responsibilities**
-  - For each util, decide which DAL module(s) it should correspond to:
-    - Navigation/space data → `data/realms.ts` and `data/visitedRealms.ts`.
-    - Profile/skin-related data → `data/profiles.ts`.
-  - Write a short mapping table (even if just in comments/notes) like:
-    - `getPlayRealmData` → `realms.getByShareId`, `profiles.getProfile`, `visitedRealms.addVisitedRealm`.
-    - `saveRealm` → `realms.updateRealmMapData` (or similar).
-    - `updateVisitedRealms` → `visitedRealms.addVisitedRealm`.
+- **1.2. Keep DAL boundaries clean**
+  - Auth stays at API/server component boundary via `auth.getSession()`.
+  - DAL stays DB-only (`data/*`).
   - Identify any logic that is **not** pure DB (e.g. authorization, redirect decisions) and mark it to stay at the “service layer” or API handler, *not* inside DAL.
 
 - **1.3. Implement missing DAL functions**
-  - In `data/realms.ts`, add any functions needed to cover all current Supabase usages:
-    - e.g. `getByShareId(shareId)`, `updateRealmMapData(id, payload)`, `updateRealmMeta(id, payload)`.
-  - In `data/profiles.ts`, ensure functions for:
-    - Reading profile by `userId`; updating `skin`; optionally updating any other profile fields currently touched by Supabase.
-  - In `data/visitedRealms.ts`, ensure:
-    - `getVisitedRealms(userId)` for listing.
-    - `addVisitedRealm(userId, shareId)` with idempotent behavior if the existing Supabase logic expects it (e.g. don’t double-count).
+  - Ensure `data/libraries.ts`, `data/visitedLibraries.ts`, `data/profiles.ts` cover all DB needs.
 
 - **1.4. Re-implement server utils on top of DAL (or inline them)**
   - For utilities still used by multiple call sites:
@@ -42,36 +27,22 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
     - Inline the logic into the relevant `app/api/.../route.ts` or server component, using DAL directly.
   - Ensure auth is **always** done via `auth.getSession` at the server boundary (API route/server component), not inside DAL.
 
-- **1.5. Remove or alias old Supabase-specific utilities**
-  - Once all call sites have been updated:
-    - Delete or turn old `utils/supabase/*` functions into simple re-exports of DAL-based implementations (temporary step if needed).
-  - Run a project-wide search for `utils/supabase` to confirm:
-    - No remaining imports from that directory.
-    - No remaining references to Supabase-specific types in server-only code.
+- **1.5. Confirm no Supabase legacy remains**
+  - Project-wide search for: `utils/supabase`, `realms`, `@supabase/*`.
 
 ---
 
-### 2. Client Supabase usage → API routes + DAL (`client-to-api-routes`)
+### 2. Client legacy usage → API routes + DAL (`client-to-api-routes`)
 
-- **2.1. Inventory client components using Supabase**
-  - Confirm all known components:
-    - `app/play/SkinMenu/SkinMenu.tsx`
-    - `app/app/RealmsMenu/RealmsMenu.tsx`
-    - `app/editor/Toolbars/TopBar.tsx`
-    - `app/manage/ManageChild.tsx`
-    - `components/Modal/CreateRealmModal.tsx`
-    - `components/AccountDropdown.tsx`
-  - For each, note:
-    - What data it reads/writes.
-    - Any current assumptions about `access_token`, `user.id`, or `session`.
+- **2.1. Inventory client components for legacy dependencies**
+  - Remove dead UI paths and ensure client only talks to `/api/*` + Neon Auth.
 
 - **2.2. Design API routes for each client feature**
   - Define minimal, resource-oriented endpoints:
     - `PATCH /api/profile/skin` — Change skin.
-    - `POST /api/realms` — Create realm.
-    - `PATCH /api/realms/[id]/meta` — Rename realm, toggle visibility/`only_owner`, etc.
-    - `POST /api/realms/[id]/save` — Save map data from editor.
-    - `POST /api/realms/[id]/share` — Generate/update share link (if needed).
+    - `POST /api/libraries` — Create library.
+    - `PATCH /api/libraries/[id]/meta` — Rename/toggle fields.
+    - `POST /api/libraries/[id]/save` — Save map data from editor.
   - For read-heavy features (lists/detail reads), decide whether:
     - To keep them in server components (preferred) using DAL directly, or
     - Expose GET API routes only if the data must be fetched client-side (e.g. live updates).
@@ -87,16 +58,8 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
     - 403 for unauthorized (e.g. wrong owner).
     - 404 for non-existent resources.
 
-- **2.4. Refactor client components off Supabase**
-  - Replace `createClient()` and all Supabase-specific calls with `fetch` to the new API routes.
-  - For each component:
-    - `SkinMenu`: call `PATCH /api/profile/skin` with new skin value, update local UI state optimistically.
-    - `RealmsMenu`: ensure it no longer needs to call Supabase for session/access token; rely on server-rendered data or a lightweight API for counts.
-    - `TopBar`: on save, call `POST /api/realms/[id]/save` instead of `saveRealm(session.access_token, ...)`.
-    - `ManageChild`: use `PATCH /api/realms/[id]/meta` and any share endpoint instead of direct `supabase.from('realms').update(...)`.
-    - `CreateRealmModal`: call `POST /api/realms` to create a realm, then close modal and navigate using returned ID.
-    - `AccountDropdown`: invoke Neon Auth sign-out via client auth helper (e.g. `authClient.signOut()` or redirect to `/api/auth/signout` depending on your current auth wiring).
-  - Remove all `@supabase/*` imports from client components once they’re using API routes.
+- **2.4. Refactor client components onto API routes**
+  - No direct DB clients in client components.
 
 - **2.5. Validate client flows end-to-end**
   - For each feature, manually verify:
@@ -106,16 +69,10 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
 
 ---
 
-### 3. Final Supabase removal (`remove-supabase-final`)
+### 3. Final legacy removal (`remove-supabase-final`)
 
-- **3.1. Remove Supabase imports and utilities**
-  - Run a full-text search for:
-    - `@supabase/`, `supabase-js`, `createClient`, `utils/supabase`.
-  - For any remaining references:
-    - Migrate them to DAL/API route equivalents or delete if dead code.
-  - Once confirmed:
-    - Delete `utils/supabase` directory entirely.
-    - Remove any `backend/src/supabase.ts` or similar, if not already handled in the backend step.
+- **3.1. Remove legacy imports/utilities**
+  - Run a full-text search for `utils/supabase`, `realms`, `@supabase/*`.
 
 - **3.2. Clean up environment variables**
   - In root `.env.local` and `.env.example`:
@@ -124,12 +81,9 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
     - Remove any Supabase-related keys.
     - Ensure only Neon-related variables (e.g. `BACKEND_DATABASE_URL`) remain.
 
-- **3.3. Remove Supabase packages**
-  - From `package.json`:
-    - Remove `@supabase/ssr`, `@supabase/supabase-js`, and any other Supabase-related dependencies.
-  - Reinstall dependencies and run typecheck/build to confirm removal:
-    - `pnpm install` / `npm install` / `yarn` as appropriate.
-    - `next build` to surface any missed references.
+- **3.3. Remove Supabase packages (if any remain transitively)**
+  - Ensure `package.json` has no direct Supabase dependencies.
+  - If your lockfile still pulls Supabase packages transitively, track down which dependency pulls them and decide if it's acceptable.
 
 ---
 
@@ -159,7 +113,7 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
 - **4.4. Update backend data access to Neon**
   - For each backend route/socket event that hits Supabase tables:
     - Rewrite the logic to use `backend/src/db.ts` and SQL queries that match the Neon schema.
-  - Keep the backend schema assumptions aligned with the same tables as the frontend DAL (`realms`, `profiles`, `visited_realms`, etc.).
+  - Keep the backend schema assumptions aligned with the same tables as the frontend DAL (`libraries`, `profiles`, `visited_libraries`, etc.).
 
 - **4.5. Smoke test backend flows**
   - Validate:
@@ -174,9 +128,9 @@ We already have the high-level migration plan in `[.cursor/plans/full-neon-migra
 - **5.1. Define core regression scenarios**
   - Based on the high-level plan, confirm at least:
     1. Sign up and login via Neon Auth.
-    2. `/app`: list realms for the logged-in user; create a new realm and see it appear.
+    2. `/app`: land in app shell; default library is available.
     3. `/editor/[id]`: open editor, modify map, save; reload to confirm persistence.
-    4. `/play/[id]`: enter realm via direct link or share link; skin changes persist via profile/visited-realms logic.
+    4. `/play/[id]`: enter library via direct link or share link; skin changes persist via profile/visited-libraries logic.
     5. Logout and attempt to access protected routes; verify redirect to `/signin`.
 
 - **5.2. Run end-to-end manual tests**

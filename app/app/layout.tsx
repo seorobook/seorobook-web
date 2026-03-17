@@ -4,9 +4,8 @@ import { auth } from '@/lib/auth'
 import { ensureProfile, getProfileById } from '@/data/profiles'
 import { getOrCreateDefaultLibrary } from '@/data/libraries'
 import { formatEmailToName } from '@/utils/formatEmailToName'
-import { defaultSkin } from '@/utils/pixi/Player/skins'
-import LeftNav from './LeftNav'
-import SpaceClient from './SpaceClient'
+import HeaderControls from './HeaderControls'
+import BottomNavWrapper from './BottomNavWrapper'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = await auth.getSession()
@@ -21,25 +20,29 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const displayName =
     profile?.nickname?.trim() || (session.user.email ? formatEmailToName(session.user.email) : '게스트')
 
-  const skin = profile?.skin ?? defaultSkin
-  const mapData = defaultLibrary.map_data
-
   return (
-    <div className="w-full h-screen flex flex-row">
-      <LeftNav />
-      <div className="grow flex flex-row min-w-0">
-        {/* Center space (desktop-first). Mobile can hide via CSS later. */}
-        <div className="hidden lg:block w-[55%] min-w-[520px] border-r border-primary/30 bg-black">
-          <SpaceClient
-            mapData={mapData}
-            username={displayName}
-            libraryId={defaultLibrary.id}
-            uid={session.user.id}
-            initialSkin={skin}
-          />
+    <div className="w-full h-screen flex flex-col bg-primary text-white">
+      {/* Top header line */}
+      <header className="h-14 px-4 flex items-center border-b border-primary/30 bg-primary/90 backdrop-blur-sm shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <a href="/app" className="font-semibold truncate hover:underline">
+            SeoroBook
+          </a>
+          <span className="text-sm text-secondary truncate">{displayName}</span>
         </div>
-        {/* Right panel */}
-        <div className="grow min-w-0 bg-primary text-white overflow-y-auto">{children}</div>
+        <div className="ml-auto flex items-center gap-3">
+          <HeaderControls />
+        </div>
+      </header>
+
+      {/* Main content area */}
+      <div className="relative grow min-h-0">
+        <div className="h-full overflow-y-auto">{children}</div>
+      </div>
+
+      {/* Bottom navigation */}
+      <div className="shrink-0">
+        <BottomNavWrapper />
       </div>
     </div>
   )

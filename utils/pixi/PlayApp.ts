@@ -28,6 +28,8 @@ export class PlayApp extends App {
     private currentPrivateAreaTiles: TilePoint[] = []
     public proximityId: string | null = null
     private multiplayer: boolean = true
+    private bookshelfKioskTile: Point | null = null
+    private nearBookshelf: boolean = false
 
     constructor(
         uid: string,
@@ -173,6 +175,7 @@ export class PlayApp extends App {
         this.app.renderer.on('resize', this.resizeEvent)
         this.fadeTileContainer.alpha = 0
         this.app.stage.addChild(this.fadeTileContainer)
+        this.setUpBookshelfKiosk()
         this.clickEvents()
         this.setUpKeyboardEvents()
         this.setUpFadeOverlay()
@@ -182,6 +185,48 @@ export class PlayApp extends App {
         }
 
         this.fadeOut()
+    }
+
+    private setUpBookshelfKiosk() {
+        // Place a visible "bookshelf" kiosk near spawn for MVP.
+        const spawn = this.libraryData.spawnpoint
+        const tile = { x: spawn.x + 2, y: spawn.y } as Point
+        this.bookshelfKioskTile = tile
+
+        const sizeX = 5
+        const sizeY = 3
+        const g = new PIXI.Graphics()
+        g.rect(0, 0, sizeX * 32, sizeY * 32)
+        g.fill(0x2f3a5f)
+        g.stroke({ width: 2, color: 0x8aa0ff })
+        g.position.set(tile.x * 32, tile.y * 32)
+        g.eventMode = 'static'
+        g.cursor = 'pointer'
+        g.on('pointerdown', () => {
+            signal.emit('showBookshelfPrompt')
+        })
+        this.layers.object.addChild(g)
+
+        const label = new PIXI.Text({
+            text: '책장',
+            style: { fill: 0xffffff, fontSize: 14, fontWeight: '700' },
+        })
+        label.position.set(g.position.x + 10, g.position.y + 8)
+        this.layers.object.addChild(label)
+
+        // Proximity check (local player)
+        const ticker = () => {
+            if (!this.bookshelfKioskTile) return
+            const p = this.player.currentTilePosition
+            const dx = Math.abs(p.x - this.bookshelfKioskTile.x)
+            const dy = Math.abs(p.y - this.bookshelfKioskTile.y)
+            const isNear = dx <= 2 && dy <= 2
+            if (isNear !== this.nearBookshelf) {
+                this.nearBookshelf = isNear
+                signal.emit(isNear ? 'showBookshelfPrompt' : 'hideBookshelfPrompt')
+            }
+        }
+        PIXI.Ticker.shared.add(ticker)
     }
 
     private spawnLocalPlayer = async () => {

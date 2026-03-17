@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { saveLibrary } from "@/utils/supabase/saveLibrary"
+import { saveLibrary } from "@/utils/server-actions/saveLibrary"
 
 export async function POST(
   request: Request,

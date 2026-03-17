@@ -7,8 +7,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Gather",
-  description: "This is a Gather clone.",
+  title: "SeoroBook",
+  description: "SeoroBook",
 }
 
 export default function RootLayout({

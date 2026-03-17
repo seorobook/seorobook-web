@@ -41,7 +41,7 @@ export default function Login() {
       const { error } = await authClient.signUp.email({
         email,
         password,
-        name: name.trim() || email.split('@')[0] || '사용자',
+        name: email.split('@')[0] || '사용자',
       })
 
       if (error) {

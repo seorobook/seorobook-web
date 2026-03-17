@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js'
 import { App } from './App'
 import signal from '../signal'
-import { Layer, TilemapSprites, Tool, TilePoint, Point, RealmData, Room, TileMode, SpriteMap, SpecialTile } from './types'
+import { Layer, TilemapSprites, Tool, TilePoint, Point, LibraryData, Room, TileMode, SpriteMap, SpecialTile } from './types'
 import { SheetName, SpriteSheetTile, sprites } from './spritesheet/spritesheet'
 import { formatForComparison } from '../removeExtraSpaces'
 import { v4 as uuidv4 } from 'uuid'
@@ -78,7 +78,7 @@ export class EditorApp extends App {
     }
 
     private getTileCount = () => {
-        return Object.keys(this.realmData.rooms[this.currentRoomIndex].tilemap).length
+        return Object.keys(this.libraryData.rooms[this.currentRoomIndex].tilemap).length
     }
 
     private drawSpecialTiles = () => {
@@ -93,7 +93,7 @@ export class EditorApp extends App {
             }
         }
 
-        for (const [key, value] of Object.entries(this.realmData.rooms[this.currentRoomIndex].tilemap)) {
+        for (const [key, value] of Object.entries(this.libraryData.rooms[this.currentRoomIndex].tilemap)) {
             if (value.impassable) {
                 const [x, y] = key.split(',').map(Number)
 
@@ -118,8 +118,8 @@ export class EditorApp extends App {
             }
         }
 
-        if (this.currentRoomIndex === this.realmData.spawnpoint.roomIndex) {
-            const { x, y } = this.realmData.spawnpoint
+        if (this.currentRoomIndex === this.libraryData.spawnpoint.roomIndex) {
+            const { x, y } = this.libraryData.spawnpoint
             this.placeSpawnTileSprite(x, y)
         }
     }
@@ -163,17 +163,17 @@ export class EditorApp extends App {
     private placeSpawnTile = (x: number, y: number) => {
         this.removeGizmoAtPosition(x, y, false)
         this.placeSpawnTileSprite(x, y)
-        this.addSpawnToRealmData(x, y)
+        this.addSpawnToLibraryData(x, y)
     }
 
-    private addSpawnToRealmData = (x: number, y: number) => {
-        const newRealmData = this.getRealmDataCopy()
-        newRealmData.spawnpoint = {
+    private addSpawnToLibraryData = (x: number, y: number) => {
+        const newLibraryData = this.getLibraryDataCopy()
+        newLibraryData.spawnpoint = {
             roomIndex: this.currentRoomIndex,
             x,
             y
         }
-        this.updateRealmData(newRealmData, false)
+        this.updateLibraryData(newLibraryData, false)
     }
 
     private removeSpawnTile = () => {
@@ -194,10 +194,10 @@ export class EditorApp extends App {
     } 
 
     private placeImpassableCollider = (x: number, y: number, tile: PIXI.Sprite, snapshot: boolean) => {
-        if (this.isColliderAtPosition(x, y) || (this.realmData.spawnpoint.x === x && this.realmData.spawnpoint.y === y)) return
+        if (this.isColliderAtPosition(x, y) || (this.libraryData.spawnpoint.x === x && this.libraryData.spawnpoint.y === y)) return
     
         this.removeGizmoAtPosition(x, y, false)
-        this.addColliderToRealmData(x, y, snapshot)
+        this.addColliderToLibraryData(x, y, snapshot)
         this.placeColliderSprite(x, y, tile)
     }
 
@@ -216,19 +216,19 @@ export class EditorApp extends App {
 
     private isImpassableColliderAtPosition = (x: number, y: number) => {
         const key = `${x}, ${y}` as TilePoint
-        return this.realmData.rooms[this.currentRoomIndex].tilemap[key]?.impassable === true
+        return this.libraryData.rooms[this.currentRoomIndex].tilemap[key]?.impassable === true
     }
 
     private placePrivateArea = (x: number, y: number, tile: PIXI.Sprite, snapshot: boolean) => {
         const key = `${x}, ${y}` as TilePoint
         if (this.isColliderAtPosition(x, y) || 
-            this.realmData.spawnpoint.x === x && this.realmData.spawnpoint.y === y || 
-            this.realmData.rooms[this.currentRoomIndex].tilemap[key]?.teleporter ||
-            this.realmData.rooms[this.currentRoomIndex].tilemap[key]?.privateAreaId) {
+            this.libraryData.spawnpoint.x === x && this.libraryData.spawnpoint.y === y || 
+            this.libraryData.rooms[this.currentRoomIndex].tilemap[key]?.teleporter ||
+            this.libraryData.rooms[this.currentRoomIndex].tilemap[key]?.privateAreaId) {
                 return
             }
 
-        this.addPrivateAreaToRealmData(x, y, snapshot)
+        this.addPrivateAreaToLibraryData(x, y, snapshot)
         this.placePrivateAreaSprite(x, y, tile)
     }
 
@@ -256,10 +256,10 @@ export class EditorApp extends App {
 
     private setUpTeleporterAtPosition = (x: number, y: number) => {
         const key = `${x}, ${y}` as TilePoint
-        if (this.collidersFromSpritesMap[key] || (this.realmData.spawnpoint.x === x && this.realmData.spawnpoint.y === y)) return
+        if (this.collidersFromSpritesMap[key] || (this.libraryData.spawnpoint.x === x && this.libraryData.spawnpoint.y === y)) return
 
         this.newTeleporterCoordinates = { x, y }
-        const roomList = this.realmData.rooms.map((room: Room) => room.name)
+        const roomList = this.libraryData.rooms.map((room: Room) => room.name)
         signal.emit('placeTeleporter', roomList)
     }
 
@@ -267,7 +267,7 @@ export class EditorApp extends App {
         this.removeGizmoAtPosition(this.newTeleporterCoordinates.x, this.newTeleporterCoordinates.y, false)
         const sprite = this.placeTeleportSprite(this.newTeleporterCoordinates.x, this.newTeleporterCoordinates.y)
         this.setUpEraserTool(sprite, this.newTeleporterCoordinates.x, this.newTeleporterCoordinates.y, 'gizmo')
-        this.addTeleporterToRealmData({ 
+        this.addTeleporterToLibraryData({ 
             x: this.newTeleporterCoordinates.x,
             y: this.newTeleporterCoordinates.y
         }, {
@@ -276,15 +276,15 @@ export class EditorApp extends App {
         }, roomIndex)
     }
 
-    private addTeleporterToRealmData = (start: Point, destination: Point, roomIndex: number) => {
+    private addTeleporterToLibraryData = (start: Point, destination: Point, roomIndex: number) => {
         const key = `${start.x}, ${start.y}` as TilePoint
-        const newRealmData = this.getRealmDataCopy()
-        newRealmData.rooms[this.currentRoomIndex] = {
-            ...newRealmData.rooms[this.currentRoomIndex],
+        const newLibraryData = this.getLibraryDataCopy()
+        newLibraryData.rooms[this.currentRoomIndex] = {
+            ...newLibraryData.rooms[this.currentRoomIndex],
             tilemap: {
-                ...newRealmData.rooms[this.currentRoomIndex].tilemap,
+                ...newLibraryData.rooms[this.currentRoomIndex].tilemap,
                 [key]: {
-                    ...newRealmData.rooms[this.currentRoomIndex].tilemap[key],
+                    ...newLibraryData.rooms[this.currentRoomIndex].tilemap[key],
                     teleporter: {
                         roomIndex,
                         x: destination.x,
@@ -293,7 +293,7 @@ export class EditorApp extends App {
                 }
             }
         }
-        this.updateRealmData(newRealmData, true)
+        this.updateLibraryData(newLibraryData, true)
     }
 
     private removeGizmoAtPosition = (x: number, y: number, snapshot: boolean) => {
@@ -303,7 +303,7 @@ export class EditorApp extends App {
             this.removeGizmoSpriteAtPosition(x, y)
         }
 
-        this.removeGizmoFromRealmData(x, y, snapshot)
+        this.removeGizmoFromLibraryData(x, y, snapshot)
     }
 
     private removeGizmoSpriteAtPosition = (x: number, y: number) => {
@@ -490,7 +490,7 @@ export class EditorApp extends App {
         this.sortObjectsByY()
 
         // For database purposes
-        this.addTileToRealmData(x, y, layer as Layer, this.selectedPalette + '-' + this.selectedTile, snapshot)
+        this.addTileToLibraryData(x, y, layer as Layer, this.selectedPalette + '-' + this.selectedTile, snapshot)
     }
 
     private collidersConflict = (colliders: Point[], tile: PIXI.Sprite) => {
@@ -503,9 +503,9 @@ export class EditorApp extends App {
 
             if (this.isTeleporterAtPosition(colliderCoordinates.x, colliderCoordinates.y)) return true
             if (
-                this.currentRoomIndex === this.realmData.spawnpoint.roomIndex && 
-                this.realmData.spawnpoint.x === colliderCoordinates.x && 
-                this.realmData.spawnpoint.y === colliderCoordinates.y) {
+                this.currentRoomIndex === this.libraryData.spawnpoint.roomIndex && 
+                this.libraryData.spawnpoint.x === colliderCoordinates.x && 
+                this.libraryData.spawnpoint.y === colliderCoordinates.y) {
                 return true
             }
         }
@@ -514,7 +514,7 @@ export class EditorApp extends App {
 
     private isTeleporterAtPosition = (x: number, y: number) => {
         const key = `${x}, ${y}` as TilePoint
-        return this.realmData.rooms[this.currentRoomIndex].tilemap[key]?.teleporter
+        return this.libraryData.rooms[this.currentRoomIndex].tilemap[key]?.teleporter
     }
 
     private rectangleEraserTool = () => {
@@ -616,7 +616,7 @@ export class EditorApp extends App {
             this.deleteSpriteColliders(x, y, layer)
             this.layers[layer as Layer].removeChild(tile)
             delete this.tilemapSprites[`${x}, ${y}`][layer as Layer]
-            this.removeTileFromRealmData(x, y, layer as Layer, snapshot)
+            this.removeTileFromLibraryData(x, y, layer as Layer, snapshot)
         }
     }
 
@@ -681,7 +681,7 @@ export class EditorApp extends App {
 
     private getTileDataAtPosition = (x: number, y: number, layer: Layer) => {
         const key = `${x}, ${y}` as TilePoint
-        const tileName = this.realmData.rooms[this.currentRoomIndex].tilemap[key]?.[layer]
+        const tileName = this.libraryData.rooms[this.currentRoomIndex].tilemap[key]?.[layer]
         if (tileName) {
             const [sheetName, spriteName] = tileName.split('-') as [SheetName, string]
 
@@ -689,87 +689,87 @@ export class EditorApp extends App {
         }
     }
 
-    private addTileToRealmData = (x: number, y: number, layer: Layer, tile: string, snapshot: boolean) => {
+    private addTileToLibraryData = (x: number, y: number, layer: Layer, tile: string, snapshot: boolean) => {
         const key = `${x}, ${y}` as TilePoint
-        const newRealmData = this.getRealmDataCopy()
+        const newLibraryData = this.getLibraryDataCopy()
         // return if the tile is already there
-        if (newRealmData.rooms[this.currentRoomIndex].tilemap[key]?.[layer] === tile) return
+        if (newLibraryData.rooms[this.currentRoomIndex].tilemap[key]?.[layer] === tile) return
 
-        newRealmData.rooms[this.currentRoomIndex] = {
-            ...newRealmData.rooms[this.currentRoomIndex],
+        newLibraryData.rooms[this.currentRoomIndex] = {
+            ...newLibraryData.rooms[this.currentRoomIndex],
             tilemap: {
-                ...newRealmData.rooms[this.currentRoomIndex].tilemap,
+                ...newLibraryData.rooms[this.currentRoomIndex].tilemap,
                 [key]: {
-                    ...newRealmData.rooms[this.currentRoomIndex].tilemap[key],
+                    ...newLibraryData.rooms[this.currentRoomIndex].tilemap[key],
                     [layer]: tile
                 }
             }
         }
-        this.updateRealmData(newRealmData, snapshot)
+        this.updateLibraryData(newLibraryData, snapshot)
     }
 
-    private addColliderToRealmData = (x: number, y: number, snapshot: boolean) => {
+    private addColliderToLibraryData = (x: number, y: number, snapshot: boolean) => {
         const key = `${x}, ${y}` as TilePoint
-        const newRealmData = this.getRealmDataCopy()
-        newRealmData.rooms[this.currentRoomIndex].tilemap[key] = {
-            ...newRealmData.rooms[this.currentRoomIndex].tilemap[key],
+        const newLibraryData = this.getLibraryDataCopy()
+        newLibraryData.rooms[this.currentRoomIndex].tilemap[key] = {
+            ...newLibraryData.rooms[this.currentRoomIndex].tilemap[key],
             impassable: true
         }
-        this.updateRealmData(newRealmData, snapshot)
+        this.updateLibraryData(newLibraryData, snapshot)
     }
 
-    private addPrivateAreaToRealmData = (x: number, y: number, snapshot: boolean) => {
+    private addPrivateAreaToLibraryData = (x: number, y: number, snapshot: boolean) => {
         const key = `${x}, ${y}` as TilePoint
-        const newRealmData = this.getRealmDataCopy()
-        newRealmData.rooms[this.currentRoomIndex].tilemap[key] = {
-            ...newRealmData.rooms[this.currentRoomIndex].tilemap[key],
+        const newLibraryData = this.getLibraryDataCopy()
+        newLibraryData.rooms[this.currentRoomIndex].tilemap[key] = {
+            ...newLibraryData.rooms[this.currentRoomIndex].tilemap[key],
             privateAreaId: this.currentPrivateAreaId
         }
-        this.updateRealmData(newRealmData, snapshot)
+        this.updateLibraryData(newLibraryData, snapshot)
     }
 
-    private removeGizmoFromRealmData = (x: number, y: number, snapshot: boolean) => {
+    private removeGizmoFromLibraryData = (x: number, y: number, snapshot: boolean) => {
         const key = `${x}, ${y}` as TilePoint
-        const newRealmData = this.getRealmDataCopy()
-        if (newRealmData.rooms[this.currentRoomIndex].tilemap[key]) {
-            delete newRealmData.rooms[this.currentRoomIndex].tilemap[key].impassable
-            delete newRealmData.rooms[this.currentRoomIndex].tilemap[key].teleporter
-            delete newRealmData.rooms[this.currentRoomIndex].tilemap[key].privateAreaId
+        const newLibraryData = this.getLibraryDataCopy()
+        if (newLibraryData.rooms[this.currentRoomIndex].tilemap[key]) {
+            delete newLibraryData.rooms[this.currentRoomIndex].tilemap[key].impassable
+            delete newLibraryData.rooms[this.currentRoomIndex].tilemap[key].teleporter
+            delete newLibraryData.rooms[this.currentRoomIndex].tilemap[key].privateAreaId
 
             // delete the key if no data on it
-            if (Object.keys(newRealmData.rooms[this.currentRoomIndex].tilemap[key]).length === 0) {
-                delete newRealmData.rooms[this.currentRoomIndex].tilemap[key]
+            if (Object.keys(newLibraryData.rooms[this.currentRoomIndex].tilemap[key]).length === 0) {
+                delete newLibraryData.rooms[this.currentRoomIndex].tilemap[key]
             }
         }
         
-        this.updateRealmData(newRealmData, snapshot)
+        this.updateLibraryData(newLibraryData, snapshot)
     }
 
-    private removeTileFromRealmData = (x: number, y: number, layer: Layer, snapshot: boolean) => {
+    private removeTileFromLibraryData = (x: number, y: number, layer: Layer, snapshot: boolean) => {
         const key = `${x}, ${y}` as TilePoint
-        const newRealmData = this.getRealmDataCopy()
-        delete newRealmData.rooms[this.currentRoomIndex].tilemap[key][layer]
+        const newLibraryData = this.getLibraryDataCopy()
+        delete newLibraryData.rooms[this.currentRoomIndex].tilemap[key][layer]
         // delete the key if no data on it
-        if (Object.keys(newRealmData.rooms[this.currentRoomIndex].tilemap[key]).length === 0) {
-            delete newRealmData.rooms[this.currentRoomIndex].tilemap[key]
+        if (Object.keys(newLibraryData.rooms[this.currentRoomIndex].tilemap[key]).length === 0) {
+            delete newLibraryData.rooms[this.currentRoomIndex].tilemap[key]
         }
-        this.updateRealmData(newRealmData, snapshot)
+        this.updateLibraryData(newLibraryData, snapshot)
     }
 
-    private updateRealmData = (newRealmData: RealmData, snapshot: boolean, dontSavePresent?: boolean) => {
+    private updateLibraryData = (newLibraryData: LibraryData, snapshot: boolean, dontSavePresent?: boolean) => {
         if (snapshot) {
             // remove last snapshot. i dont know why but this kind of fixes things
             this.snapshots = this.snapshots.slice(0, this.snapshotIndex)
-            const pastRoom = JSON.parse(JSON.stringify(this.realmData.rooms[this.currentRoomIndex]))
+            const pastRoom = JSON.parse(JSON.stringify(this.libraryData.rooms[this.currentRoomIndex]))
             this.snapshots.push(pastRoom)
             this.setSnapshotIndex(this.snapshots.length)
         }
 
         if (!dontSavePresent) {
-            this.present = JSON.parse(JSON.stringify(newRealmData.rooms[this.currentRoomIndex]))
+            this.present = JSON.parse(JSON.stringify(newLibraryData.rooms[this.currentRoomIndex]))
         }
 
-        this.realmData = newRealmData
+        this.libraryData = newLibraryData
         this.emitBarWidth()
         this.needsToSave = true
     }
@@ -795,17 +795,17 @@ export class EditorApp extends App {
     }
 
     private loadSnapshotRoom = async () => {
-        const newRealmData = this.getRealmDataCopy()
+        const newLibraryData = this.getLibraryDataCopy()
         let room = null
         if (this.snapshotIndex >= this.snapshots.length) {
-            newRealmData.rooms[this.currentRoomIndex].tilemap = this.present.tilemap
-            room = newRealmData.rooms[this.currentRoomIndex]
+            newLibraryData.rooms[this.currentRoomIndex].tilemap = this.present.tilemap
+            room = newLibraryData.rooms[this.currentRoomIndex]
         } else {
-            newRealmData.rooms[this.currentRoomIndex].tilemap = this.snapshots[this.snapshotIndex].tilemap
-            room = newRealmData.rooms[this.currentRoomIndex]
+            newLibraryData.rooms[this.currentRoomIndex].tilemap = this.snapshots[this.snapshotIndex].tilemap
+            room = newLibraryData.rooms[this.currentRoomIndex]
         }
 
-        this.updateRealmData(newRealmData, false, true)
+        this.updateLibraryData(newLibraryData, false, true)
         await this.loadRoomFromData(room)
     }
 
@@ -1103,7 +1103,7 @@ export class EditorApp extends App {
     }
 
     private onBeginSave = () => {
-        signal.emit('save', this.realmData)
+        signal.emit('save', this.libraryData)
     }
 
     private onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -1135,15 +1135,15 @@ export class EditorApp extends App {
 
     private onCreateRoom = () => {
         const newRoom: Room = {
-            name: this.generateUniqueRoomName(this.realmData.rooms),
+            name: this.generateUniqueRoomName(this.libraryData.rooms),
             tilemap: {}
         }
-        const newRealmData = this.getRealmDataCopy()
-        newRealmData.rooms.push(newRoom)
-        this.updateRealmData(newRealmData, false, true)
+        const newLibraryData = this.getLibraryDataCopy()
+        newLibraryData.rooms.push(newRoom)
+        this.updateLibraryData(newLibraryData, false, true)
         signal.emit('newRoom', newRoom.name)
 
-        this.changeRoom(this.realmData.rooms.length - 1)
+        this.changeRoom(this.libraryData.rooms.length - 1)
     }
 
     private changeRoom = async (index: number) => {
@@ -1159,11 +1159,11 @@ export class EditorApp extends App {
 
     private onDeleteRoom = async (index: number) => {
         // disable delete if only one room
-        if (this.realmData.rooms.length === 1) return
+        if (this.libraryData.rooms.length === 1) return
 
-        const newRealmData = this.getRealmDataCopy()
-        newRealmData.rooms.splice(index, 1)
-        for (const room of newRealmData.rooms) {
+        const newLibraryData = this.getLibraryDataCopy()
+        newLibraryData.rooms.splice(index, 1)
+        for (const room of newLibraryData.rooms) {
             for (const [key, value] of Object.entries(room.tilemap)) {
                 // delete teleporter value if it points to the deleted room
                 if (value.teleporter?.roomIndex === index) {
@@ -1176,10 +1176,10 @@ export class EditorApp extends App {
             }
         }
         // reset spawn point if room deleted
-        if (newRealmData.spawnpoint.roomIndex === index) {
-            newRealmData.spawnpoint = { roomIndex: 0, x: 0, y: 0 }
-        } else if (newRealmData.spawnpoint.roomIndex > index) {
-            newRealmData.spawnpoint.roomIndex -= 1
+        if (newLibraryData.spawnpoint.roomIndex === index) {
+            newLibraryData.spawnpoint = { roomIndex: 0, x: 0, y: 0 }
+        } else if (newLibraryData.spawnpoint.roomIndex > index) {
+            newLibraryData.spawnpoint.roomIndex -= 1
         }
 
         if (this.currentRoomIndex === index) {
@@ -1188,7 +1188,7 @@ export class EditorApp extends App {
             this.currentRoomIndex -= 1
         }
 
-        this.updateRealmData(newRealmData, false, true)
+        this.updateLibraryData(newLibraryData, false, true)
         this.snapshots = []
         this.setSnapshotIndex(0)
         signal.emit('roomDeleted', { deletedIndex: index, newIndex: this.currentRoomIndex })
@@ -1197,9 +1197,9 @@ export class EditorApp extends App {
     }
 
     private onChangeRoomName = ({ index, newName }: { index: number, newName: string }) => {
-        const newRealmData = this.getRealmDataCopy()
-        newRealmData.rooms[index].name = newName
-        this.updateRealmData(newRealmData, false, true)
+        const newLibraryData = this.getLibraryDataCopy()
+        newLibraryData.rooms[index].name = newName
+        this.updateLibraryData(newLibraryData, false, true)
         signal.emit('roomNameChanged', { index, newName })
     }
 
@@ -1224,8 +1224,8 @@ export class EditorApp extends App {
         this.gizmoContainer.visible = show
     }
 
-    private getRealmDataCopy = ():RealmData => {
-        return JSON.parse(JSON.stringify(this.realmData))
+    private getLibraryDataCopy = ():LibraryData => {
+        return JSON.parse(JSON.stringify(this.libraryData))
     }
 
     public destroy() {

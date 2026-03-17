@@ -4,45 +4,59 @@ import { redirect } from 'next/navigation'
 import PlayClient from '../PlayClient'
 import { formatEmailToName } from '@/utils/formatEmailToName'
 import { auth } from '@/lib/auth'
-import { getRealmById, getRealmByShareId } from '@/data/realms'
-import { getProfileById } from '@/data/profiles'
-import { addVisitedRealm } from '@/data/visitedRealms'
+import { getLibraryById, getLibraryByShareId } from '@/data/libraries'
+import { getProfileById, ensureProfile } from '@/data/profiles'
+import { defaultSkin } from '@/utils/pixi/Player/skins'
+import { addVisitedLibrary } from '@/data/visitedLibraries'
 
-export default async function Play({ params, searchParams }: { params: { id: string }, searchParams: { shareId: string } }) {
-
+export default async function Play({
+    params,
+    searchParams,
+}: {
+    params: Promise<{ id: string }>
+    searchParams: Promise<{ shareId?: string }>
+}) {
     const { data: session } = await auth.getSession()
     if (!session?.user) {
         return redirect('/signin')
     }
 
-    const realm = searchParams.shareId
-      ? await getRealmByShareId(searchParams.shareId)
-      : await getRealmById(params.id)
+    await ensureProfile(session.user.id)
+    const { data: access } = await auth.getAccessToken().catch(() => ({ data: null as any }))
+    const accessToken = (access as any)?.accessToken || (access as any)?.access_token || ''
+
+    const [resolvedParams, resolvedSearch] = await Promise.all([params, searchParams])
+    const library = resolvedSearch.shareId
+        ? await getLibraryByShareId(resolvedSearch.shareId)
+        : await getLibraryById(resolvedParams.id)
 
     const profile = await getProfileById(session.user.id)
 
-    // Show not found page if no data is returned
-    if (!realm || !profile) {
+    if (!library || !profile) {
         return <NotFound specialMessage={undefined}/>
     }
 
-    const map_data = realm.map_data
-    const skin = profile.skin ?? null
+    const map_data = library.map_data
+    const skin = profile.skin ?? defaultSkin
 
-    if (searchParams.shareId && realm.owner_id !== session.user.id) {
-        await addVisitedRealm(session.user.id, searchParams.shareId)
+    if (resolvedSearch.shareId && library.owner_id !== session.user.id) {
+        await addVisitedLibrary(session.user.id, resolvedSearch.shareId)
     }
 
+    const isOwner = library.owner_id === session.user.id
+
     return (
-        <PlayClient 
-            mapData={map_data} 
-            username={formatEmailToName(session.user.email)} 
-            access_token={''} 
-            realmId={params.id} 
-            uid={session.user.id} 
-            shareId={searchParams.shareId || ''} 
+        <PlayClient
+            mapData={map_data}
+            username={formatEmailToName(session.user.email)}
+            access_token={accessToken}
+            libraryId={resolvedParams.id}
+            uid={session.user.id}
+            shareId={resolvedSearch.shareId || ''}
             initialSkin={skin}
-            name={realm.name}
+            name={library.name}
+            isOwner={isOwner}
+            libraryOwnerId={library.owner_id}
         />
     )
 }

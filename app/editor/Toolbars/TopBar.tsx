@@ -5,12 +5,12 @@ import React, { useEffect, useState } from 'react'
 import BasicButton from '@/components/BasicButton'
 import signal from '@/utils/signal'
 import { useModal } from '@/app/hooks/useModal'
-import { RealmData } from '@/utils/pixi/types'
+import { LibraryData } from '@/utils/pixi/types'
 import { useParams } from 'next/navigation'
 import { toast } from 'react-toastify'
 import revalidate from '@/utils/revalidate'
 import { FloppyDisk } from '@phosphor-icons/react'
-import { saveRealm } from '@/utils/supabase/saveRealm'
+import { saveLibrary } from '@/utils/supabase/saveLibrary'
 
 type TopBarProps = {
     
@@ -30,19 +30,19 @@ const TopBar:React.FC<TopBarProps> = () => {
     }
 
     useEffect(() => {
-        const save = async (realmData: RealmData) => {
+        const save = async (libraryData: LibraryData) => {
             try {
-                const res = await fetch(`/api/realms/${id}/save`, {
+                const res = await fetch(`/api/libraries/${id}/save`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ realmData }),
+                    body: JSON.stringify({ libraryData }),
                 })
 
                 if (!res.ok) {
                     const data = await res.json().catch(() => null)
-                    const message = data?.error?.message || 'Failed to save realm'
+                    const message = data?.error?.message || 'Failed to save library'
                     toast.error(message)
                 } else {
                     toast.success('Saved!')

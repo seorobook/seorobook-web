@@ -11,13 +11,13 @@ import BasicInput from '@/components/BasicInput'
 import { removeExtraSpaces } from '@/utils/removeExtraSpaces'
 
 type ManageChildProps = {
-    realmId: string
+    libraryId: string
     startingShareId: string
     startingOnlyOwner: boolean
     startingName: string
 }
 
-const ManageChild:React.FC<ManageChildProps> = ({ realmId, startingShareId, startingOnlyOwner, startingName }) => {
+const ManageChild:React.FC<ManageChildProps> = ({ libraryId, startingShareId, startingOnlyOwner, startingName }) => {
 
     const [selectedTab, setSelectedTab] = useState(0)
     const [shareId, setShareId] = useState(startingShareId)
@@ -35,7 +35,7 @@ const ManageChild:React.FC<ManageChildProps> = ({ realmId, startingShareId, star
         setLoadingText('Saving...')
 
         try {
-            const res = await fetch(`/api/realms/${realmId}/meta`, {
+            const res = await fetch(`/api/libraries/${libraryId}/meta`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ const ManageChild:React.FC<ManageChildProps> = ({ realmId, startingShareId, star
     }
 
     function copyLink() {
-        const link = process.env.SEORO_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL + '/play/' + realmId + '?shareId=' + shareId
+        const link = process.env.SEORO_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL + '/play/' + libraryId + '?shareId=' + shareId
         navigator.clipboard.writeText(link)
         toast.success('Link copied!')
     }
@@ -71,7 +71,7 @@ const ManageChild:React.FC<ManageChildProps> = ({ realmId, startingShareId, star
         const newShareId = uuidv4()
 
         try {
-            const res = await fetch(`/api/realms/${realmId}/meta`, {
+            const res = await fetch(`/api/libraries/${libraryId}/meta`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ const ManageChild:React.FC<ManageChildProps> = ({ realmId, startingShareId, star
                 toast.error(message || 'Failed to generate link')
             } else {
                 setShareId(newShareId)
-                const link = (process.env.SEORO_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL) + '/play/' + realmId + '?shareId=' + newShareId
+                const link = (process.env.SEORO_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL) + '/play/' + libraryId + '?shareId=' + newShareId
                 navigator.clipboard.writeText(link)
                 toast.success('New link copied!')
             }

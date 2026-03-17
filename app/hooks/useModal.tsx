@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, ReactNode, FC, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 
-type Modal = 'None' | 'Create Realm' | 'Account Dropdown' | 'Loading' | 'Delete Room' | 'Teleport' | 'Delete Realm' | 'Skin' 
+type Modal = 'None' | 'Create Library' | 'Account Dropdown' | 'Loading' | 'Delete Room' | 'Teleport' | 'Delete Library' | 'Skin' 
 
 type ErrorModal = 'None' | 'Failed To Connect' | 'Disconnected'
 
@@ -11,7 +11,7 @@ type RoomToDelete = {
     index: number
 }
 
-type RealmToDelete = {
+type LibraryToDelete = {
     name: string,
     id: string
 }
@@ -23,8 +23,8 @@ type ModalContextType = {
     setRoomToDelete: (value: RoomToDelete) => void,
     roomList: string[],
     setRoomList: (value: string[]) => void
-    realmToDelete: RealmToDelete,
-    setRealmToDelete: (value: RealmToDelete) => void,
+    libraryToDelete: LibraryToDelete,
+    setLibraryToDelete: (value: LibraryToDelete) => void,
     loadingText: string,
     setLoadingText: (value: string) => void
     failedConnectionMessage: string,
@@ -45,11 +45,11 @@ const ModalContext = createContext<ModalContextType>({
     setRoomToDelete: () => {},
     roomList: [],
     setRoomList: () => {},
-    realmToDelete: {
+    libraryToDelete: {
         name: '',
         id: ''
     },
-    setRealmToDelete: () => {},
+    setLibraryToDelete: () => {},
     loadingText: '',
     setLoadingText: () => {},
     failedConnectionMessage: '',
@@ -71,7 +71,7 @@ export const ModalProvider: FC<ModalProviderProps> = ({ children }) => {
         index: 0
     })
     const [roomList, setRoomList] = useState<string[]>([])
-    const [realmToDelete, setRealmToDelete] = useState<RealmToDelete>({
+    const [libraryToDelete, setLibraryToDelete] = useState<LibraryToDelete>({
         name: '',
         id: ''
     })
@@ -87,8 +87,8 @@ export const ModalProvider: FC<ModalProviderProps> = ({ children }) => {
         roomToDelete, 
         setRoomToDelete, 
         roomList, setRoomList, 
-        realmToDelete, 
-        setRealmToDelete, 
+        libraryToDelete, 
+        setLibraryToDelete, 
         loadingText, 
         setLoadingText, 
         failedConnectionMessage, 

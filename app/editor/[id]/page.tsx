@@ -1,25 +1,24 @@
 import NotFound from '@/app/not-found'
 import { redirect } from 'next/navigation'
-import Editor from '../Editor'
 import { auth } from '@/lib/auth'
-import { getRealmById } from '@/data/realms'
+import { getLibraryById } from '@/data/libraries'
 
-export default async function RealmEditor({ params }: { params: { id: string } }) {
-
+export default async function LibraryEditorPage({
+    params,
+}: {
+    params: Promise<{ id: string }>
+}) {
     const { data: session } = await auth.getSession()
     if (!session?.user) {
         return redirect('/signin')
     }
 
-    const realm = await getRealmById(params.id)
-    if (!realm || realm.owner_id !== session.user.id) {
+    const { id } = await params
+    const library = await getLibraryById(id)
+    if (!library || library.owner_id !== session.user.id) {
         return <NotFound />
     }
-    const map_data = realm.map_data 
 
-    return (
-        <div>
-            <Editor realmData={map_data}/>
-        </div>
-    )
+    // 레거시 맵 편집기는 사용하지 않음: 기본 홈(/app)로 이동
+    return redirect('/app')
 }

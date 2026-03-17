@@ -5,13 +5,13 @@ import LeftBar from './Toolbars/LeftBar'
 import RightSection from './Toolbars/RightSection'
 import PixiEditor from './PixiEditor'
 import Coords from './Toolbars/Coords'
-import { RealmData, Tool, TileMode, SpecialTile, Layer } from '@/utils/pixi/types'
+import { LibraryData, Tool, TileMode, SpecialTile, Layer } from '@/utils/pixi/types'
 import signal from '@/utils/signal'
 import { useModal } from '../hooks/useModal'
 import { SheetName } from '@/utils/pixi/spritesheet/spritesheet'
 
 type EditorProps = {
-    realmData: RealmData
+    libraryData: LibraryData
 }
 
 export type TileWithPalette = {
@@ -20,7 +20,7 @@ export type TileWithPalette = {
 
 const palettes: SheetName[] = ['ground', 'grasslands', 'village']
 
-const Editor:React.FC<EditorProps> = ({ realmData }) => {
+const Editor:React.FC<EditorProps> = ({ libraryData }) => {
     
     const [tool, setTool] = useState<Tool>('None')
     const [tileMode, setTileMode] = useState<TileMode>('Single')
@@ -29,7 +29,7 @@ const Editor:React.FC<EditorProps> = ({ realmData }) => {
     const [specialTile, setSpecialTile] = useState<SpecialTile>('None')
     const [eraserLayer, setEraserLayer] = useState<Layer | 'gizmo'>('floor')
     const { setModal, setRoomList } = useModal()
-    const [rooms, setRooms] = useState<string[]>(realmData.rooms.map(room => room.name))
+    const [rooms, setRooms] = useState<string[]>(libraryData.rooms.map(room => room.name))
     const [roomIndex, setRoomIndex] = useState<number>(0)
     const [selectedPalette, setSelectedPalette] = useState<SheetName>(palettes[0])
 
@@ -105,7 +105,7 @@ const Editor:React.FC<EditorProps> = ({ realmData }) => {
             <TopBar />
             <div className='w-full grow flex flex-row'>
                 <LeftBar tool={tool} tileMode={tileMode} selectTool={selectTool} selectTileMode={selectTileMode} specialTile={specialTile} eraserLayer={eraserLayer} selectEraserLayer={selectEraserLayer}/>
-                <PixiEditor className='h-full grow' setGameLoaded={setGameLoaded} realmData={realmData}/>
+                <PixiEditor className='h-full grow' setGameLoaded={setGameLoaded} libraryData={libraryData}/>
                 <RightSection 
                     selectedTile={selectedTile} 
                     setSelectedTile={selectTile} 

@@ -6,19 +6,19 @@ import { useVideoChat } from '../hooks/useVideoChat'
 import MicAndCameraButtons from '@/components/VideoChat/MicAndCameraButtons'
 
 type IntroScreenProps = {
-    realmName: string
+    libraryName: string
     skin: string
     username: string
     setShowIntroScreen: (show: boolean) => void
 }
 
-const IntroScreen:React.FC<IntroScreenProps> = ({ realmName, skin, username, setShowIntroScreen }) => {
+const IntroScreen:React.FC<IntroScreenProps> = ({ libraryName, skin, username, setShowIntroScreen }) => {
 
     const src = '/sprites/characters/Character_' + skin + '.png'
 
     return (
         <main className='dark-gradient w-full h-screen flex flex-col items-center pt-28'>
-            <h1 className='text-4xl font-semibold'>Welcome to <span className='text-[#CAD8FF]'>{realmName}</span></h1>
+            <h1 className='text-4xl font-semibold'>Welcome to <span className='text-[#CAD8FF]'>{libraryName}</span></h1>
             <section className='flex flex-row mt-32 items-center gap-24'>
                 <div className='flex flex-col items-center gap-4'>
                     <div className='aspect-video w-[337px] h-[227px] bg-black rounded-xl border-2 border-[#3F4776] overflow-hidden'>

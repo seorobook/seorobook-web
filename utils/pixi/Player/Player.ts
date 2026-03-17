@@ -6,7 +6,16 @@ import { bfs } from '../pathfinding'
 import { server } from '../../backend/server'
 import { defaultSkin, skins } from './skins'
 import signal from '@/utils/signal'
-import { videoChat } from '@/utils/video-chat/video-chat'
+
+let videoChatPromise: Promise<any> | null = null
+async function getVideoChat() {
+    if (typeof window === 'undefined') return null
+    if (!videoChatPromise) {
+        videoChatPromise = import('@/utils/video-chat/video-chat')
+    }
+    const mod = await videoChatPromise.catch(() => null)
+    return (mod as any)?.videoChat ?? null
+}
 function formatText(message: string, maxLength: number): string {
     message = message.trim()
     const words = message.split(' ')
@@ -291,23 +300,23 @@ export class Player {
     public checkIfShouldJoinChannel = (newTilePosition: Point) => {
         if (!this.isLocal) return
 
-        const tile = this.playApp.realmData.rooms[this.playApp.currentRoomIndex].tilemap[`${newTilePosition.x}, ${newTilePosition.y}`]
+        const tile = this.playApp.libraryData?.rooms?.[this.playApp.currentRoomIndex]?.tilemap?.[`${newTilePosition.x}, ${newTilePosition.y}`]
         if (tile && tile.privateAreaId) {
             if (tile.privateAreaId !== this.currentChannel) {
                 this.currentChannel = tile.privateAreaId
-                videoChat.joinChannel(tile.privateAreaId, this.playApp.uid + this.username, this.playApp.realmId)
+                void getVideoChat().then((vc) => vc?.joinChannel(tile.privateAreaId, this.playApp.uid + this.username, this.playApp.libraryId))
                 this.playApp.fadeInTiles(tile.privateAreaId)
             }
         } else {
             if (this.playApp.proximityId) {
                 if (this.playApp.proximityId !== this.currentChannel) {
                     this.currentChannel = this.playApp.proximityId
-                    videoChat.joinChannel(this.playApp.proximityId, this.playApp.uid + this.username, this.playApp.realmId)
+                    void getVideoChat().then((vc) => vc?.joinChannel(this.playApp.proximityId, this.playApp.uid + this.username, this.playApp.libraryId))
                     this.playApp.fadeOutTiles()
                 }
             } else if (this.currentChannel !== 'local') {
                 this.currentChannel = 'local'
-                videoChat.leaveChannel()
+                void getVideoChat().then((vc) => vc?.leaveChannel())
                 this.playApp.fadeOutTiles()
             }
         }
@@ -339,10 +348,15 @@ export class Player {
 
     public changeAnimationState = (state: AnimationState, force: boolean = false) => {
         if (this.animationState === state && !force) return
+        if (!this.sheet?.animations) return
+
+        const textures = this.sheet.animations[state] ?? this.sheet.animations['idle_down']
+        if (!textures) return
 
         this.animationState = state
         const animatedSprite = this.parent.children[0] as PIXI.AnimatedSprite
-        animatedSprite.textures = this.sheet.animations[state]
+        if (!animatedSprite) return
+        animatedSprite.textures = textures
         animatedSprite.play()
     }
 
@@ -361,7 +375,24 @@ export class Player {
             movementInput.x += 1
         }
 
-        this.moveToTile(this.currentTilePosition.x + movementInput.x, this.currentTilePosition.y + movementInput.y)
+        if (movementInput.x === 0 && movementInput.y === 0) return
+
+        // 방향 전환은 이동 성공 여부와 무관하게 즉시 반영
+        if (movementInput.x > 0) this.direction = 'right'
+        else if (movementInput.x < 0) this.direction = 'left'
+        else if (movementInput.y > 0) this.direction = 'down'
+        else if (movementInput.y < 0) this.direction = 'up'
+
+        const nextX = this.currentTilePosition.x + movementInput.x
+        const nextY = this.currentTilePosition.y + movementInput.y
+
+        // 막힌 타일이면 제자리에서 방향만 돌기
+        if (this.playApp.blocked.has(`${nextX}, ${nextY}`)) {
+            this.changeAnimationState(`idle_${this.direction}` as AnimationState)
+            return
+        }
+
+        this.moveToTile(nextX, nextY)
     }
 
     public setMovementMode = (mode: 'keyboard' | 'mouse') => {

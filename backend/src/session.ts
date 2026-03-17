@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { kickPlayer } from './sockets/helpers'
 import { v4 as uuidv4 } from 'uuid'
 
-export type RealmData = {
+export type LibraryData = {
     spawnpoint: {
         roomIndex: number,
         x: number,
@@ -52,13 +52,13 @@ export type RoomData = { [key: number]: Player[] }
 
 export class SessionManager {
     private sessions: { [key: string]: Session } = {}
-    private playerIdToRealmId: { [key: string]: string } = {}
+    private playerIdToLibraryId: { [key: string]: string } = {}
     private socketIdToPlayerId: { [key: string]: string } = {}
 
-    public createSession(id: string, mapData: RealmData): void {
-        const realm = new Session(id, mapData)
+    public createSession(id: string, mapData: LibraryData): void {
+        const session = new Session(id, mapData)
 
-        this.sessions[id] = realm
+        this.sessions[id] = session
     }
 
     public getSession(id: string): Session {
@@ -66,29 +66,29 @@ export class SessionManager {
     }
 
     public getPlayerSession(uid: string): Session {
-        const realmId = this.playerIdToRealmId[uid]
-        return this.sessions[realmId]
+        const libraryId = this.playerIdToLibraryId[uid]
+        return this.sessions[libraryId]
     }
 
-    public addPlayerToSession(socketId: string, realmId: string, uid: string, username: string, skin: string) {
-        this.sessions[realmId].addPlayer(socketId, uid, username, skin)
-        this.playerIdToRealmId[uid] = realmId
+    public addPlayerToSession(socketId: string, libraryId: string, uid: string, username: string, skin: string) {
+        this.sessions[libraryId].addPlayer(socketId, uid, username, skin)
+        this.playerIdToLibraryId[uid] = libraryId
         this.socketIdToPlayerId[socketId] = uid
     }
 
     public logOutPlayer(uid: string) {
-        const realmId = this.playerIdToRealmId[uid]
-        // If the player is not in a realm, do nothing
-        if (!realmId) return
+        const libraryId = this.playerIdToLibraryId[uid]
+        // If the player is not in a library, do nothing
+        if (!libraryId) return
 
-        const player = this.sessions[realmId].getPlayer(uid)
+        const player = this.sessions[libraryId].getPlayer(uid)
         delete this.socketIdToPlayerId[player.socketId]
-        delete this.playerIdToRealmId[uid]
-        this.sessions[realmId].removePlayer(uid)
+        delete this.playerIdToLibraryId[uid]
+        this.sessions[libraryId].removePlayer(uid)
     }
 
-    public getSocketIdsInRoom(realmId: string, roomIndex: number): string[] {
-        return this.sessions[realmId].getPlayersInRoom(roomIndex).map(player => player.socketId)
+    public getSocketIdsInRoom(libraryId: string, roomIndex: number): string[] {
+        return this.sessions[libraryId].getPlayersInRoom(roomIndex).map(player => player.socketId)
     }
 
     public logOutBySocketId(socketId: string) {
@@ -120,9 +120,9 @@ export class Session {
 
     public players: { [key: string]: Player } = {}
     public id: string
-    public map_data: RealmData 
+    public map_data: LibraryData 
 
-    constructor(id: string, mapData: RealmData) {
+    constructor(id: string, mapData: LibraryData) {
         this.id = id
         this.map_data = mapData 
 

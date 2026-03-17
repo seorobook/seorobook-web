@@ -7,7 +7,7 @@ export default function NotFound({ specialMessage }: NotFoundProps) {
 
     function getMessage() {
         if (specialMessage === 'only owner') {
-            return 'This realm is private right now. Come back later! 😶'
+            return 'This library is private right now. Come back later! 😶'
         } else {
             return '404 - This page is not real! ☹️'
         }

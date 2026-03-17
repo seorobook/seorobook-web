@@ -88,6 +88,7 @@ const sprites: SpriteSheetTile[] = [
     { name: 'sign_4', x: 320, y: 96, width: 32, height: 64, layer: 'object', colliders: [{ x: 0, y: 1 }] },
 
     { name: 'mailbox', x: 224, y: 160, width: 32, height: 32, layer: 'object', colliders: [{ x: 0, y: 0 }] },
+    { name: 'bookshelf', x: 256, y: 160, width: 32, height: 32, layer: 'object', colliders: [{ x: 0, y: 0 }] },
     { name: 'crate', x: 256, y: 160, width: 32, height: 32, layer: 'object', colliders: [{ x: 0, y: 0 }] },
     { name: 'small_crate', x: 256, y: 192, width: 32, height: 32, layer: 'object', colliders: [{ x: 0, y: 0 }] },
     { name: 'box', x: 288, y: 160, width: 32, height: 32, layer: 'object', colliders: [{ x: 0, y: 0 }] },

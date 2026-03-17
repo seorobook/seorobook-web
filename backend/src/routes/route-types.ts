@@ -23,5 +23,5 @@ export const UserIsInGuild = z.object({
 })
 
 export const GetPlayerCounts = z.object({
-    realmIds: z.string().transform((s) => s.split(',')),
+    libraryIds: z.string().transform((s) => s.split(',')),
 })

@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import { Session } from '../session'
 
-export const JoinRealm = z.object({
-    realmId: z.string(),
+export const JoinLibrary = z.object({
+    libraryId: z.string(),
     shareId: z.string(),
 })
 

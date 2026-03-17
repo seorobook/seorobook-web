@@ -1,4 +1,7 @@
-import { User } from '@supabase/supabase-js'
+export type User = {
+    id: string
+    email?: string
+}
 
 class Users {
     private users: { [key: string]: User } = {}

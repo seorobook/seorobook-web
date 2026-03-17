@@ -39,7 +39,7 @@ const SpecialTiles:React.FC<SpecialTilesProps> = ({ specialTile, selectSpecialTi
             <SpecialTileItem 
                 iconColor='green' 
                 title='Spawn Point' 
-                description='Specify where players spawn into your Realm.' 
+                description='Specify where players spawn into your library.' 
                 selected={specialTile === 'Spawn'} 
                 onClick={() => selectSpecialTile('Spawn')}>
                 <Tree className='w-12 h-12'/>

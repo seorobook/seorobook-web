@@ -1,4 +1,4 @@
-import { RealmData } from './session'
+import { LibraryData } from './session'
 
 export function removeExtraSpaces(text: string) {
     let value = text.replace(/\s\s+/g, ' ')
@@ -13,16 +13,16 @@ export function formatForComaprison(text: string) {
     return removeExtraSpaces(text.toLowerCase())
 }
 
-export function getRoomFromName(mapData: RealmData, name: string) {
+export function getRoomFromName(mapData: LibraryData, name: string) {
     const room = mapData.rooms.find(room => formatForComaprison(room.name) === formatForComaprison(name))
     return room
 }
 
-export function getRoomNames(mapData: RealmData) {
+export function getRoomNames(mapData: LibraryData) {
     return mapData.rooms.map(room => room.name)
 }
 
-export function getRoomNamesWithChannelId(mapData: RealmData, channelId: string) {
+export function getRoomNamesWithChannelId(mapData: LibraryData, channelId: string) {
     return mapData.rooms.filter(room => room.channelId === channelId).map(room => room.name)
 }
 

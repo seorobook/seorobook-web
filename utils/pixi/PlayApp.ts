@@ -1,11 +1,10 @@
 import { App } from './App'
 import { Player } from './Player/Player'
-import { Point, RealmData, SpriteMap, TilePoint } from './types'
+import { Point, LibraryData, SpriteMap, TilePoint } from './types'
 import * as PIXI from 'pixi.js'
 import { server } from '../backend/server'
 import { defaultSkin } from './Player/skins'
 import signal from '../signal'
-import { createClient } from '../supabase/client'
 import { gsap } from 'gsap'
 
 export class PlayApp extends App {
@@ -17,7 +16,7 @@ export class PlayApp extends App {
     private fadeOverlay: PIXI.Graphics = new PIXI.Graphics()
     private fadeDuration: number = 0.5
     public uid: string = ''
-    public realmId: string = ''
+    public libraryId: string = ''
     public players: { [key: string]: Player } = {}
     private disableInput: boolean = false
 
@@ -28,12 +27,21 @@ export class PlayApp extends App {
     private fadeAnimation: gsap.core.Tween | null = null
     private currentPrivateAreaTiles: TilePoint[] = []
     public proximityId: string | null = null
+    private multiplayer: boolean = true
 
-    constructor(uid: string, realmId: string, realmData: RealmData, username: string, skin: string = defaultSkin) {
-        super(realmData)
+    constructor(
+        uid: string,
+        libraryId: string,
+        libraryData: LibraryData,
+        username: string,
+        skin: string = defaultSkin,
+        options?: { multiplayer?: boolean },
+    ) {
+        super(libraryData)
         this.uid = uid
-        this.realmId = realmId
+        this.libraryId = libraryId
         this.player = new Player(skin, this, username, true)
+        this.multiplayer = options?.multiplayer !== false
     }
 
     override async loadRoom(index: number) {
@@ -42,7 +50,9 @@ export class PlayApp extends App {
         this.setUpBlockedTiles()
         this.setUpFadeTiles()
         this.spawnLocalPlayer()
-        await this.syncOtherPlayers()
+        if (this.multiplayer) {
+            await this.syncOtherPlayers()
+        }
         this.displayInitialChatMessage()
     }
 
@@ -50,7 +60,8 @@ export class PlayApp extends App {
         this.fadeTiles = {}
         this.fadeTileContainer.removeChildren()
 
-        for (const [key] of Object.entries(this.realmData.rooms[this.currentRoomIndex].tilemap)) {
+        const tilemap = this.libraryData?.rooms?.[this.currentRoomIndex]?.tilemap ?? {}
+        for (const [key] of Object.entries(tilemap)) {
             const [x, y] = key.split(',').map(Number)
             const screenCoordinates = this.convertTileToScreenCoordinates(x, y)
             const tile: PIXI.Sprite = new PIXI.Sprite(PIXI.Assets.get('/sprites/faded-tile.png'))
@@ -69,7 +80,8 @@ export class PlayApp extends App {
 
         this.currentPrivateAreaTiles = []
         // get all tiles with privateAreaId
-        const tiles = Object.entries(this.realmData.rooms[this.currentRoomIndex].tilemap).filter(([key, value]) => value.privateAreaId === privateAreaId)
+        const tilemap = this.libraryData?.rooms?.[this.currentRoomIndex]?.tilemap ?? {}
+        const tiles = Object.entries(tilemap).filter(([key, value]) => value.privateAreaId === privateAreaId)
         for (const [key] of tiles) {
             const tile = this.fadeTiles[key as TilePoint]
             tile.alpha = 0
@@ -115,6 +127,7 @@ export class PlayApp extends App {
     }
 
     private async syncOtherPlayers() {
+        if (!this.multiplayer) return
         const {data, error} = await server.getPlayersInRoom(this.currentRoomIndex)
         if (error) {
             console.error('Failed to get player positions in room:', error)
@@ -154,7 +167,7 @@ export class PlayApp extends App {
     public async init() {
         await super.init()
         await this.loadAssets()
-        await this.loadRoom(this.realmData.spawnpoint.roomIndex)
+        await this.loadRoom(this.libraryData.spawnpoint.roomIndex)
         this.app.stage.eventMode = 'static'
         this.setScale(this.scale)
         this.app.renderer.on('resize', this.resizeEvent)
@@ -164,7 +177,9 @@ export class PlayApp extends App {
         this.setUpKeyboardEvents()
         this.setUpFadeOverlay()
         this.setUpSignalListeners()
-        this.setUpSocketEvents()
+        if (this.multiplayer) {
+            this.setUpSocketEvents()
+        }
 
         this.fadeOut()
     }
@@ -175,7 +190,7 @@ export class PlayApp extends App {
         if (this.teleportLocation) {
             this.player.setPosition(this.teleportLocation.x, this.teleportLocation.y)
         } else {
-            this.player.setPosition(this.realmData.spawnpoint.x, this.realmData.spawnpoint.y)
+            this.player.setPosition(this.libraryData.spawnpoint.x, this.libraryData.spawnpoint.y)
         }
         this.layers.object.addChild(this.player.parent)
         this.moveCameraToPlayer()
@@ -213,7 +228,8 @@ export class PlayApp extends App {
     private setUpBlockedTiles = () => {
         this.blocked = new Set<TilePoint>()
 
-        for (const [key, value] of Object.entries(this.realmData.rooms[this.currentRoomIndex].tilemap)) {
+        const tilemap = this.libraryData?.rooms?.[this.currentRoomIndex]?.tilemap ?? {}
+        for (const [key, value] of Object.entries(tilemap)) {
             if (value.impassable) {
                 this.blocked.add(key as TilePoint)
             }
@@ -228,10 +244,25 @@ export class PlayApp extends App {
 
     private clickEvents = () => {
         this.app.stage.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
-            if (this.player.frozen || this.disableInput) return  
+            if (this.player.frozen || this.disableInput) return
 
             const clickPosition = e.getLocalPosition(this.app.stage)
             const { x, y } = this.convertScreenToTileCoordinates(clickPosition.x, clickPosition.y)
+            const tilePoint = `${x}, ${y}` as TilePoint
+            const tileData = this.libraryData?.rooms?.[this.currentRoomIndex]?.tilemap?.[tilePoint]
+            const objectValue = tileData?.object
+            const objectName =
+                typeof objectValue === 'string'
+                    ? (objectValue.includes('-') ? objectValue.split('-').slice(1).join('-') : objectValue)
+                    : null
+            if (objectName === 'bookshelf') {
+                signal.emit('openBooksOverlay')
+                return
+            }
+            if (objectName === 'mailbox') {
+                signal.emit('openFeedOverlay')
+                return
+            }
             this.player.moveToTile(x, y)
             this.player.setMovementMode('mouse')
         })
@@ -254,7 +285,7 @@ export class PlayApp extends App {
 
     public teleportIfOnTeleportSquare = (x: number, y: number) => {
         const tile = `${x}, ${y}` as TilePoint
-        const teleport = this.realmData.rooms[this.currentRoomIndex].tilemap[tile]?.teleporter
+        const teleport = this.libraryData?.rooms?.[this.currentRoomIndex]?.tilemap?.[tile]?.teleporter
         if (teleport) {
             this.teleport(teleport.roomIndex, teleport.x, teleport.y)
             return true
@@ -274,8 +305,9 @@ export class PlayApp extends App {
             this.player.changeAnimationState('idle_down')
             await this.loadRoom(roomIndex)
         }
-
-        server.socket.emit('teleport', { x, y, roomIndex })
+        if (this.multiplayer) {
+            server.socket.emit('teleport', { x, y, roomIndex })
+        }
 
         this.player.setFrozen(false)
         this.fadeOut()
@@ -283,7 +315,7 @@ export class PlayApp extends App {
 
     public hasTeleport = (x: number, y: number) => {
         const tile = `${x}, ${y}` as TilePoint
-        return this.realmData.rooms[this.currentRoomIndex].tilemap[tile]?.teleporter
+        return this.libraryData?.rooms?.[this.currentRoomIndex]?.tilemap?.[tile]?.teleporter
     }
 
     private fadeIn = () => {
@@ -383,7 +415,9 @@ export class PlayApp extends App {
 
     private onSwitchSkin = (skin: string) => {
         this.player.changeSkin(skin)
-        server.socket.emit('changedSkin', skin)
+        if (this.multiplayer) {
+            server.socket.emit('changedSkin', skin)
+        }
     }
 
     private getSkinForUid = (uid: string) => {
@@ -416,7 +450,9 @@ export class PlayApp extends App {
 
     private onMessage = (message: string) => {
         this.player.setMessage(message)
-        server.socket.emit('sendMessage', message)
+        if (this.multiplayer) {
+            server.socket.emit('sendMessage', message)
+        }
     }
 
     private onReceiveMessage = (data: any) => {
@@ -427,14 +463,9 @@ export class PlayApp extends App {
     }
 
     private displayInitialChatMessage = async () => {
-        const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return
-        let channelName = ''
-
         signal.emit('newRoomChat', {
-            name: this.realmData.rooms[this.currentRoomIndex].name,
-            channelId: channelName
+            name: this.libraryData?.rooms?.[this.currentRoomIndex]?.name ?? '',
+            channelId: ''
         })
     }
 
@@ -470,9 +501,13 @@ export class PlayApp extends App {
     }
 
     private removeEvents = () => {
-        this.removeSocketEvents()
+        if (this.multiplayer) {
+            this.removeSocketEvents()
+        }
         this.destroyPlayers()
-        server.disconnect()
+        if (this.multiplayer) {
+            server.disconnect()
+        }
 
         PIXI.Ticker.shared.destroy()
 

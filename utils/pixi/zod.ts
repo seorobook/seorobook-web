@@ -29,9 +29,9 @@ const SpawnpointSchema = z.object({
   y: z.number(),
 })
 
-const RealmDataSchema = z.object({
+const LibraryDataSchema = z.object({
   spawnpoint: SpawnpointSchema,
   rooms: z.array(RoomSchema),
 })
 
-export { RealmDataSchema, RoomSchema }
+export { LibraryDataSchema, RoomSchema }

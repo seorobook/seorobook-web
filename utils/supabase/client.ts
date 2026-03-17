@@ -3,10 +3,12 @@
 // 기존 컴포넌트가 호출하더라도 앱이 크래시 나지 않게 최소 형태만 유지한다.
 // TODO: 모든 호출 지점을 Neon DB/DAL 기반 구현으로 교체한 뒤 이 파일 제거.
 
-type SupabaseStub = {
+export type SessionStub = { access_token: string } | null;
+
+export type SupabaseStub = {
   auth: {
     getUser: () => Promise<{ data: { user: null }; error: null }>;
-    getSession: () => Promise<{ data: { session: null }; error: null }>;
+    getSession: () => Promise<{ data: { session: SessionStub }; error: null }>;
     signOut: () => Promise<void>;
   };
   from: (_table: string) => {
@@ -29,7 +31,7 @@ export const createClient = (): SupabaseStub => {
       async getUser() {
         return { data: { user: null }, error: null };
       },
-      async getSession() {
+      async getSession(): Promise<{ data: { session: SessionStub }; error: null }> {
         return { data: { session: null }, error: null };
       },
       async signOut() {

@@ -1,12 +1,21 @@
-import { Server } from 'socket.io'
-import { JoinRealm, Disconnect, OnEventCallback, MovePlayer, Teleport, ChangedSkin, NewMessage } from './socket-types'
-import { z } from 'zod'
-import { supabase } from '../supabase'
-import { users } from '../Users'
-import { sessionManager } from '../session'
-import { removeExtraSpaces } from '../utils'
-import { kickPlayer } from './helpers'
-import { formatEmailToName } from '../utils'
+import { Server } from "socket.io"
+import {
+  JoinLibrary,
+  Disconnect,
+  OnEventCallback,
+  MovePlayer,
+  Teleport,
+  ChangedSkin,
+  NewMessage,
+} from "./socket-types"
+import { z } from "zod"
+import { users } from "../Users"
+import { sessionManager } from "../session"
+import { removeExtraSpaces } from "../utils"
+import { kickPlayer } from "./helpers"
+import { formatEmailToName } from "../utils"
+import { verifyBearerToken } from "../auth"
+import { query } from "../db"
 
 const joiningInProgress = new Set<string>()
 
@@ -18,15 +27,16 @@ function protectConnection(io: Server) {
             const error = new Error("Invalid access token or uid.")
             return next(error)
         } else {
-            const { data: user, error: error } = await supabase.auth.getUser(access_token)
-            if (error) {
+            try {
+                const verified = await verifyBearerToken(access_token)
+                if (verified.id !== uid) {
+                    return next(new Error("Invalid uid."))
+                }
+                users.addUser(uid, { id: verified.id, email: verified.email ?? undefined })
+                next()
+            } catch {
                 return next(new Error("Invalid access token."))
             }
-            if (!user || user.user.id !== uid) {
-                return next(new Error("Invalid uid."))
-            }
-            users.addUser(uid, user.user)
-            next()
         }
     })
 }
@@ -73,45 +83,63 @@ export function sockets(io: Server) {
             }
         }
 
-        socket.on('joinRealm', async (realmData: z.infer<typeof JoinRealm>) => {
+        socket.on('joinLibrary', async (joinData: z.infer<typeof JoinLibrary>) => {
             const uid = socket.handshake.query.uid as string
             const rejectJoin = (reason: string) => {
                 socket.emit('failedToJoinRoom', reason)
                 joiningInProgress.delete(uid)
             }
 
-            if (JoinRealm.safeParse(realmData).success === false) {
+            if (JoinLibrary.safeParse(joinData).success === false) {
                 return rejectJoin('Invalid request data.')
             }
 
             if (joiningInProgress.has(uid)) {
-                rejectJoin('Already joining a space.')
+                rejectJoin('Already joining a library.')
             }
             joiningInProgress.add(uid)
 
-            const session = sessionManager.getSession(realmData.realmId)
+            const session = sessionManager.getSession(joinData.libraryId)
             if (session) {
                 const playerCount = session.getPlayerCount()
                 if (playerCount >= 30) {
-                    return rejectJoin("Space is full. It's 30 players max.")
+                    return rejectJoin("Library is full. It's 30 players max.")
                 } 
             }
 
-            const { data, error } = await supabase.from('realms').select('owner_id, share_id, map_data, only_owner').eq('id', realmData.realmId).single()
+            const { rows: libraryRows } = await query<{
+              owner_id: string
+              share_id: string | null
+              map_data: any
+              only_owner: boolean | null
+            }>(
+              `select owner_id, share_id, map_data, only_owner
+               from libraries
+               where id = $1
+               limit 1`,
+              [joinData.libraryId],
+            )
 
-            if (error || !data) {
-                return rejectJoin('Space not found.')
-            }
-            const { data: profile, error: profileError } = await supabase.from('profiles').select('skin').eq('id', uid).single()
-            if (profileError) {
-                return rejectJoin('Failed to get profile.')
+            const library = libraryRows[0]
+            if (!library) {
+              return rejectJoin("Library not found.")
             }
 
-            const realm = data
+            const { rows: profileRows } = await query<{ skin: string | null }>(
+              `select skin
+               from profiles
+               where id = $1
+               limit 1`,
+              [uid],
+            )
+            const profile = profileRows[0]
+            if (!profile) {
+              return rejectJoin("Failed to get profile.")
+            }
 
             const join = async () => {
-                if (!sessionManager.getSession(realmData.realmId)) {
-                    sessionManager.createSession(realmData.realmId, data.map_data)
+                if (!sessionManager.getSession(joinData.libraryId)) {
+                    sessionManager.createSession(joinData.libraryId, library.map_data)
                 }
 
                 const currentSession = sessionManager.getPlayerSession(uid)
@@ -120,26 +148,32 @@ export function sockets(io: Server) {
                 }
 
                 const user = users.getUser(uid)!
-                const username = formatEmailToName(user.user_metadata.email)
-                sessionManager.addPlayerToSession(socket.id, realmData.realmId, uid, username, profile.skin)
+                const username = formatEmailToName(user.email || "")
+                sessionManager.addPlayerToSession(
+                  socket.id,
+                  joinData.libraryId,
+                  uid,
+                  username,
+                  profile.skin || '009',
+                )
                 const newSession = sessionManager.getPlayerSession(uid)
                 const player = newSession.getPlayer(uid)   
 
-                socket.join(realmData.realmId)
-                socket.emit('joinedRealm')
+                socket.join(joinData.libraryId)
+                socket.emit('joinedLibrary')
                 emit('playerJoinedRoom', player)
                 joiningInProgress.delete(uid)
             }
 
-            if (realm.owner_id === socket.handshake.query.uid) {
+            if (library.owner_id === socket.handshake.query.uid) {
                 return join()
             }
 
-            if (realm.only_owner) {
-                return rejectJoin('This realm is private right now. Come back later!')
+            if (library.only_owner) {
+                return rejectJoin('This library is private right now. Come back later!')
             }
 
-            if (realm.share_id === realmData.shareId) {
+            if (library.share_id === joinData.shareId) {
                 return join()
             } else {
                 return rejectJoin('The share link has been changed.')

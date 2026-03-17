@@ -1,17 +1,5 @@
-import localFont from 'next/font/local'
 import "./globals.css";
 import Layout from '@/components/Layout/Layout'
-
-const nanumGothic = localFont({
-  src: [
-    { path: '../public/fonts/NanumGothicLight.ttf', weight: '300', style: 'normal' },
-    { path: '../public/fonts/NanumGothic.ttf', weight: '400', style: 'normal' },
-    { path: '../public/fonts/NanumGothicBold.ttf', weight: '700', style: 'normal' },
-    { path: '../public/fonts/NanumGothicExtraBold.ttf', weight: '800', style: 'normal' },
-  ],
-  display: 'swap',
-  variable: '--font-nanum-gothic',
-})
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -29,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko" className={nanumGothic.className}>
+    <html lang="ko">
       <body>
         <Layout>
             {children}

@@ -1,10 +1,11 @@
 'use server'
 import 'server-only'
-import { LibraryData } from '../pixi/types'
-import { LibraryDataSchema } from '../pixi/zod'
-import { formatForComparison, removeExtraSpaces } from '../removeExtraSpaces'
-import { auth } from '../../lib/auth'
-import { updateLibraryMapData } from '../../data/libraries'
+
+import { auth } from '@/lib/auth'
+import { updateLibraryMapData } from '@/data/libraries'
+import { formatForComparison, removeExtraSpaces } from '@/utils/removeExtraSpaces'
+import { LibraryData } from '@/utils/pixi/types'
+import { LibraryDataSchema } from '@/utils/pixi/zod'
 
 export async function saveLibrary(_access_token: string, libraryData: LibraryData, id: string) {
   const result = LibraryDataSchema.safeParse(libraryData)
@@ -27,7 +28,6 @@ export async function saveLibrary(_access_token: string, libraryData: LibraryDat
     }
 
     const roomName = formatForComparison(room.name)
-
     if (roomNames.has(roomName)) {
       return { error: { message: 'Room names must be unique.' } }
     }
@@ -55,3 +55,4 @@ export async function saveLibrary(_access_token: string, libraryData: LibraryDat
     return { error: { message } }
   }
 }
+

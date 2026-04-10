@@ -56,11 +56,25 @@ export function cookieHeaderFromSetCookieResponse(res: Response): string {
 }
 
 function getSetCookieLines(res: Response): string[] {
-  const anyHeaders = res.headers as Headers & { getSetCookie?: () => string[] }
-  if (typeof anyHeaders.getSetCookie === "function") {
-    return anyHeaders.getSetCookie()
+  const h = res.headers as Headers & {
+    getSetCookie?: () => string[]
+    raw?: () => Record<string, string[]>
   }
-  const single = res.headers.get("set-cookie")
+  if (typeof h.getSetCookie === "function") {
+    const a = h.getSetCookie()
+    if (a?.length) return a
+  }
+  if (typeof h.raw === "function") {
+    const raw = h.raw()
+    const lines = raw["set-cookie"]
+    if (Array.isArray(lines) && lines.length) return lines
+  }
+  const fromForEach: string[] = []
+  h.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") fromForEach.push(value)
+  })
+  if (fromForEach.length) return fromForEach
+  const single = h.get("set-cookie")
   return single ? [single] : []
 }
 

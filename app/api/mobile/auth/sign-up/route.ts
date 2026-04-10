@@ -8,6 +8,8 @@ import {
 } from "@/lib/mobile-auth-forward"
 import { toMobileAuthUser } from "@/lib/mobile-auth-user"
 
+export const runtime = "nodejs"
+
 function parseAuthPayload(raw: string): { message?: string; token?: string | null; user?: { id: string; email?: string | null; name?: string | null } } | null {
   try {
     return raw ? (JSON.parse(raw) as { message?: string; token?: string | null; user?: { id: string; email?: string | null; name?: string | null } }) : null
@@ -34,6 +36,7 @@ export async function POST(request: Request) {
       password,
     })
 
+    const cookieHeader = cookieHeaderFromSetCookieResponse(signUpRes)
     const raw = await signUpRes.text()
     const parsed = parseAuthPayload(raw)
 
@@ -50,9 +53,16 @@ export async function POST(request: Request) {
       )
     }
 
-    const cookieHeader = cookieHeaderFromSetCookieResponse(signUpRes)
     if (!cookieHeader) {
-      // MVP: email verification is disabled; we expect auto sign-in and a session cookie.
+      if (parsed?.token === null && parsed?.user) {
+        return NextResponse.json(
+          {
+            error:
+              "이메일 인증이 필요한 설정입니다. 메일함을 확인하거나 Neon Auth에서 requireEmailVerification/autoSignIn을 확인해 주세요.",
+          },
+          { status: 403 },
+        )
+      }
       return NextResponse.json(
         { error: parsed?.message || "No session cookie from auth" },
         { status: 500 },

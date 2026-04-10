@@ -8,6 +8,8 @@ import {
 } from "@/lib/mobile-auth-forward"
 import { toMobileAuthUser } from "@/lib/mobile-auth-user"
 
+export const runtime = "nodejs"
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => null)
@@ -19,6 +21,9 @@ export async function POST(request: Request) {
 
     const origin = new URL(request.url).origin
     const signInRes = await neonAuthPost(origin, ["sign-in", "email"], { email, password })
+
+    // Read Set-Cookie before consuming the body (some runtimes keep headers intact only until then).
+    const cookieHeader = cookieHeaderFromSetCookieResponse(signInRes)
 
     const raw = await signInRes.text()
     let data: { message?: string } | null = null
@@ -34,8 +39,6 @@ export async function POST(request: Request) {
         { status: signInRes.status === 401 ? 401 : 400 },
       )
     }
-
-    const cookieHeader = cookieHeaderFromSetCookieResponse(signInRes)
     if (!cookieHeader) {
       return NextResponse.json({ error: "No session cookie from auth" }, { status: 500 })
     }

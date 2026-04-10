@@ -1,18 +1,37 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-/** Expo web / dev tools hit Next on another port — browsers require CORS. */
+const MOBILE_API_PREFIX = "/api/mobile/"
+
+/**
+ * CORS for `/api/*`:
+ * - Development: localhost / same-host (Expo web on another port).
+ * - Production: only `/api/mobile/*` when `MOBILE_API_CORS_ORIGINS` lists the browser `Origin`
+ *   (Expo web hitting production API). Native iOS/Android fetch does not use CORS.
+ */
 function corsAllowOrigin(request: NextRequest): string | null {
-  if (process.env.NODE_ENV !== "development") return null
   const origin = request.headers.get("origin")
   if (!origin) return null
-  try {
-    const u = new URL(origin)
-    const host = request.nextUrl.hostname
-    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return origin
-    if (u.hostname === host) return origin
-  } catch {
-    /* ignore */
+  const pathname = request.nextUrl.pathname
+
+  if (process.env.NODE_ENV === "development") {
+    try {
+      const u = new URL(origin)
+      const host = request.nextUrl.hostname
+      if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return origin
+      if (u.hostname === host) return origin
+    } catch {
+      /* ignore */
+    }
+    return null
   }
+
+  if (pathname.startsWith(MOBILE_API_PREFIX)) {
+    const raw = process.env.MOBILE_API_CORS_ORIGINS?.trim()
+    if (!raw) return null
+    const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean)
+    if (allowed.includes(origin)) return origin
+  }
+
   return null
 }
 

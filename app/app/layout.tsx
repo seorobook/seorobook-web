@@ -6,6 +6,9 @@ import { formatEmailToName } from '@/utils/formatEmailToName'
 import HeaderControls from './HeaderControls'
 import BottomNavWrapper from './BottomNavWrapper'
 
+/** Session uses cookies — must not be statically generated at build time. */
+export const dynamic = 'force-dynamic'
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = await auth.getSession()
   if (!session?.user) return redirect('/signin')

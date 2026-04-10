@@ -27,8 +27,9 @@ export async function POST(
       return new NextResponse("nickname must be 2-12 characters", { status: 400 })
     }
 
-    if (meetup.status !== "live") {
-      return new NextResponse("Late join only allowed when live", { status: 403 })
+    // Domain status is waiting | reading | discussion | ended | cancelled (no "live").
+    if (meetup.status !== "reading" && meetup.status !== "discussion") {
+      return new NextResponse("Late join only allowed while meetup is in progress", { status: 403 })
     }
 
     const guestId = generateGuestId()

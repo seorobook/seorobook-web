@@ -1,11 +1,7 @@
 import React from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { ensureProfile, getProfileById } from '@/data/profiles'
-import { getOrCreateDefaultLibrary } from '@/data/libraries'
-import { formatEmailToName } from '@/utils/formatEmailToName'
-import { defaultSkin } from '@/utils/pixi/Player/skins'
-import SpaceClient from './SpaceClient'
+import { ensureProfile } from '@/data/profiles'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,30 +9,20 @@ export default async function App() {
   const { data: session } = await auth.getSession()
   if (!session?.user) return redirect('/signin')
 
-  await ensureProfile(session.user.id)
-  const [profile, defaultLibrary] = await Promise.all([
-    getProfileById(session.user.id),
-    getOrCreateDefaultLibrary(session.user.id),
-  ])
-
-  const displayName =
-    profile?.nickname?.trim() || (session.user.email ? formatEmailToName(session.user.email) : '게스트')
-
-  const skin = profile?.skin ?? defaultSkin
+  await ensureProfile({
+    id: session.user.id,
+    kind: 'member',
+    nickname: session.user.email?.split('@')[0] ?? '사용자',
+  })
 
   return (
-    <div className="h-full w-full bg-black">
-      {/* Desktop-only canvas. Mobile assumes no canvas. */}
-      <div className="hidden md:block h-full w-full">
-        <SpaceClient
-          mapData={defaultLibrary.map_data}
-          username={displayName}
-          libraryId={defaultLibrary.id}
-          uid={session.user.id}
-          initialSkin={skin}
-        />
+    <div className="h-full w-full bg-primary text-white flex items-center justify-center">
+      <div className="max-w-md px-6 text-center space-y-2">
+        <h1 className="text-xl font-semibold">SeoroBook (Web)</h1>
+        <p className="text-sm text-white/80">
+          웹 앱은 현재 축소 중이며, 모바일 중심 Meetup MVP 개발로 전환했습니다.
+        </p>
       </div>
-      <div className="md:hidden h-full w-full bg-primary" />
     </div>
   )
 }

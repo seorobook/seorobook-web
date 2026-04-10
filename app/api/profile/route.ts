@@ -11,12 +11,11 @@ export async function GET() {
 
     const profile = await getProfileById(session.user.id)
     if (!profile) {
-      return NextResponse.json({ nickname: null, skin: null })
+      return NextResponse.json({ nickname: null })
     }
 
     return NextResponse.json({
-      nickname: profile.nickname ?? null,
-      skin: profile.skin ?? null,
+      nickname: profile.nickname,
     })
   } catch {
     return new NextResponse("Failed to get profile", { status: 500 })

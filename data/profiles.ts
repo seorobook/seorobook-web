@@ -2,9 +2,9 @@ import { query } from "./db"
 
 export type ProfileRow = {
   id: string
-  nickname: string | null
-  skin: string | null
-  visited_library_share_ids: string[] | null
+  nickname: string
+  kind: "member" | "guest"
+  created_at: string
 }
 
 function isMissingProfilesRelation(err: any): boolean {
@@ -14,7 +14,7 @@ function isMissingProfilesRelation(err: any): boolean {
 export async function getProfileById(id: string): Promise<ProfileRow | null> {
   try {
     const { rows } = await query<ProfileRow>(
-      `select id, nickname, skin, visited_library_share_ids
+      `select id, nickname, kind, created_at
        from profiles
        where id = $1
        limit 1`,
@@ -28,13 +28,18 @@ export async function getProfileById(id: string): Promise<ProfileRow | null> {
 }
 
 /** 최초 로그인 등으로 프로필 행이 없으면 생성. id = auth user id. */
-export async function ensureProfile(id: string): Promise<void> {
+export async function ensureProfile(params: {
+  id: string
+  nickname?: string | null
+  kind: "member" | "guest"
+}): Promise<void> {
   try {
+    const nickname = (params.nickname ?? "").trim() || (params.kind === "guest" ? "게스트" : "사용자")
     await query(
-      `insert into profiles (id, nickname, skin, visited_library_share_ids)
-       values ($1, null, null, '{}')
+      `insert into profiles (id, nickname, kind)
+       values ($1, $2, $3)
        on conflict (id) do nothing`,
-      [id],
+      [params.id, nickname, params.kind],
     )
   } catch (err: any) {
     if (isMissingProfilesRelation(err)) return
@@ -42,20 +47,11 @@ export async function ensureProfile(id: string): Promise<void> {
   }
 }
 
-export async function updateProfileNickname(id: string, nickname: string | null): Promise<void> {
-  const value = nickname?.trim() || null
+export async function updateProfileNickname(id: string, nickname: string): Promise<void> {
+  const value = nickname.trim()
   await query(
     `update profiles set nickname = $2 where id = $1`,
     [id, value],
-  )
-}
-
-export async function updateProfileSkin(id: string, skin: string): Promise<void> {
-  await query(
-    `update profiles
-     set skin = $2
-     where id = $1`,
-    [id, skin],
   )
 }
 

@@ -10,6 +10,7 @@
     "@heroicons/react": "^2.1.4",
     "@neondatabase/auth": "^0.2.0-beta.1",
     "@phosphor-icons/react": "^2.1.5",
+    "@vercel/blob": "^2.3.3",
     "agora-rtc-react": "^2.3.0",
     "agora-rtc-sdk-ng": "^4.22.1",
     "agora-token": "^2.0.3",

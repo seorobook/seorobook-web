@@ -1,13 +1,14 @@
 import { createNeonAuth } from "@neondatabase/auth/next/server"
 
-function getAppBaseUrl() {
-  if (process.env.NEON_AUTH_BASE_URL) return process.env.NEON_AUTH_BASE_URL
-
-  // Vercel Preview/Prod provides VERCEL_URL without protocol.
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-
-  // Local dev fallback.
-  return "http://localhost:3000"
+/** Neon Auth hosted endpoint only — not your Next.js site URL. */
+function getNeonAuthBaseUrl() {
+  const raw = process.env.NEON_AUTH_BASE_URL?.trim()
+  if (!raw) {
+    throw new Error(
+      "NEON_AUTH_BASE_URL is required (Neon Console → Auth → API URL, e.g. https://ep-xxx.neonauth.us-east-1.aws.neon.tech).",
+    )
+  }
+  return raw.replace(/\/+$/, "")
 }
 
 const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET
@@ -16,9 +17,12 @@ if (!cookieSecret) {
 }
 
 export const auth = createNeonAuth({
-  baseUrl: getAppBaseUrl(),
+  baseUrl: getNeonAuthBaseUrl(),
   cookies: {
     secret: cookieSecret,
+    // Session data cookie is only a cache. Make it long enough to avoid intermittent exp validation failures.
+    // (The real auth is session_token; this just reduces upstream /get-session calls.)
+    sessionDataTtl: 60 * 60, // 1 hour
   },
 })
 

@@ -10,9 +10,13 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json().catch(() => null)
-    const nickname = typeof body?.nickname === "string" ? body.nickname : null
+    const nickname = typeof body?.nickname === "string" ? body.nickname : ""
+    const value = nickname.trim()
+    if (value.length < 2 || value.length > 12) {
+      return new NextResponse("nickname must be 2-12 characters", { status: 400 })
+    }
 
-    await updateProfileNickname(session.user.id, nickname)
+    await updateProfileNickname(session.user.id, value)
 
     return NextResponse.json({ ok: true })
   } catch {

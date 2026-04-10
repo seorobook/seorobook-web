@@ -2,7 +2,6 @@ import React from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { ensureProfile, getProfileById } from '@/data/profiles'
-import { getOrCreateDefaultLibrary } from '@/data/libraries'
 import { formatEmailToName } from '@/utils/formatEmailToName'
 import HeaderControls from './HeaderControls'
 import BottomNavWrapper from './BottomNavWrapper'
@@ -11,14 +10,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { data: session } = await auth.getSession()
   if (!session?.user) return redirect('/signin')
 
-  await ensureProfile(session.user.id)
-  const [profile, defaultLibrary] = await Promise.all([
-    getProfileById(session.user.id),
-    getOrCreateDefaultLibrary(session.user.id),
-  ])
+  await ensureProfile({
+    id: session.user.id,
+    kind: 'member',
+    nickname: session.user.email?.split('@')[0] ?? '사용자',
+  })
+  const profile = await getProfileById(session.user.id)
 
   const displayName =
-    profile?.nickname?.trim() || (session.user.email ? formatEmailToName(session.user.email) : '게스트')
+    profile?.nickname?.trim() || (session.user.email ? formatEmailToName(session.user.email) : '사용자')
 
   return (
     <div className="w-full h-screen flex flex-col bg-primary text-white">

@@ -1,12 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 const MOBILE_API_PREFIX = "/api/mobile/"
+const AUTH_API_PREFIX = "/api/auth/"
 
 /**
  * CORS for `/api/*`:
  * - Development: localhost / same-host (Expo web on another port).
- * - Production: only `/api/mobile/*` when `MOBILE_API_CORS_ORIGINS` lists the browser `Origin`
- *   (Expo web hitting production API). Native iOS/Android fetch does not use CORS.
+ * - Production: `/api/mobile/*` and `/api/auth/*` when `MOBILE_API_CORS_ORIGINS` lists the browser
+ *   `Origin` (Expo web calling production: mobile routes + Neon Auth proxy). Native fetch has no CORS.
  */
 function corsAllowOrigin(request: NextRequest): string | null {
   const origin = request.headers.get("origin")
@@ -25,7 +26,9 @@ function corsAllowOrigin(request: NextRequest): string | null {
     return null
   }
 
-  if (pathname.startsWith(MOBILE_API_PREFIX)) {
+  const needsProdCors =
+    pathname.startsWith(MOBILE_API_PREFIX) || pathname.startsWith(AUTH_API_PREFIX)
+  if (needsProdCors) {
     const raw = process.env.MOBILE_API_CORS_ORIGINS?.trim()
     if (!raw) return null
     const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean)

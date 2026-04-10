@@ -5,7 +5,8 @@ function isLocalhostHttpOrigin(origin: string): boolean {
   try {
     const u = new URL(origin)
     if (u.protocol !== "http:") return false
-    return u.hostname === "localhost" || u.hostname === "127.0.0.1"
+    const h = u.hostname
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1"
   } catch {
     return false
   }

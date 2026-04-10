@@ -1,18 +1,29 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-const MOBILE_API_PREFIX = "/api/mobile/"
-const AUTH_API_PREFIX = "/api/auth/"
+/** Browsers only send this for pages served from the user's machine (e.g. Expo web on :8081). */
+function isLocalhostHttpOrigin(origin: string): boolean {
+  try {
+    const u = new URL(origin)
+    if (u.protocol !== "http:") return false
+    return u.hostname === "localhost" || u.hostname === "127.0.0.1"
+  } catch {
+    return false
+  }
+}
 
 /**
  * CORS for `/api/*`:
  * - Development: localhost / same-host (Expo web on another port).
- * - Production: `/api/mobile/*` and `/api/auth/*` when `MOBILE_API_CORS_ORIGINS` lists the browser
- *   `Origin` (Expo web calling production: mobile routes + Neon Auth proxy). Native fetch has no CORS.
+ * - Production: Expo web often calls production API (`EXPO_PUBLIC_API_BASE_URL=https://…`) from
+ *   `http://localhost:PORT` — browsers require CORS on every `/api/*` route (auth, mobile, books, blob…).
+ *   We allow `http://localhost` / `http://127.0.0.1` (any port) without env; plus exact Origins in
+ *   `MOBILE_API_CORS_ORIGINS` (e.g. `https://….exp.direct`). Native apps do not use CORS.
  */
 function corsAllowOrigin(request: NextRequest): string | null {
   const origin = request.headers.get("origin")
   if (!origin) return null
   const pathname = request.nextUrl.pathname
+  if (!pathname.startsWith("/api/")) return null
 
   if (process.env.NODE_ENV === "development") {
     try {
@@ -26,11 +37,10 @@ function corsAllowOrigin(request: NextRequest): string | null {
     return null
   }
 
-  const needsProdCors =
-    pathname.startsWith(MOBILE_API_PREFIX) || pathname.startsWith(AUTH_API_PREFIX)
-  if (needsProdCors) {
-    const raw = process.env.MOBILE_API_CORS_ORIGINS?.trim()
-    if (!raw) return null
+  if (isLocalhostHttpOrigin(origin)) return origin
+
+  const raw = process.env.MOBILE_API_CORS_ORIGINS?.trim()
+  if (raw) {
     const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean)
     if (allowed.includes(origin)) return origin
   }

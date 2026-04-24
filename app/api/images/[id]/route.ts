@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import { query } from "@/data/db"
 
 export const runtime = "nodejs"
@@ -11,7 +11,7 @@ type ImageRow = {
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const { data: session } = await auth.getSession()
+  const session = await getSession(request)
   if (!session?.user) return new NextResponse("Unauthorized", { status: 401 })
 
   const { id } = await context.params

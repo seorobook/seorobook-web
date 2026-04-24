@@ -7,7 +7,6 @@ const nextConfig = {
     },
     // Pass through SEORO_* so they are available at build time (set in Vercel)
     env: {
-        SEORO_PUBLIC_BASE_URL: process.env.SEORO_PUBLIC_BASE_URL,
         SEORO_PUBLIC_BACKEND_URL: process.env.SEORO_PUBLIC_BACKEND_URL,
     },
 };

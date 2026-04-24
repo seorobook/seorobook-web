@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { put } from "@vercel/blob"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import { upsertImage } from "@/data/images"
 
 export const runtime = "nodejs"
@@ -11,7 +11,7 @@ function isImageMime(mime: string): boolean {
 
 export async function POST(request: Request) {
   try {
-    const { data: session } = await auth.getSession()
+    const session = await getSession(request)
     if (!session?.user) return new NextResponse("Unauthorized", { status: 401 })
 
     const token = process.env.BLOB_READ_WRITE_TOKEN

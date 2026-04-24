@@ -1,224 +1,339 @@
-"use client"
+'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import { useParams } from "next/navigation"
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
-const GUEST_KEY = "seorobook_guest_id"
+const GUEST_KEY = 'seorobook_guest_id';
+const POLL_MS = 3000;
 
-type MeetupStatus = "scheduled" | "live" | "ended" | "cancelled"
+/** Mirrors migration 002 check constraint. */
+type MeetupStatus = 'waiting' | 'reading' | 'discussion' | 'ended' | 'cancelled';
 
 type Meetup = {
-  id: string
-  title: string
-  status: MeetupStatus
-}
+  id: string;
+  title: string;
+  status: MeetupStatus;
+};
 
 type MeetupMember = {
-  member_id: string
-  user_id: string
-  role: string
-  nickname: string
-  book_title: string | null
-  author: string | null
-}
+  member_id: string;
+  user_id: string;
+  role: 'host' | 'member' | 'guest';
+  nickname: string;
+  book_title: string | null;
+  author: string | null;
+};
+
+const STATUS_META: Record<MeetupStatus, { label: string; tone: string; dot: string }> = {
+  waiting:    { label: '대기',    tone: 'bg-[#facc15]/15 text-[#facc15] border-[#facc15]/30',   dot: 'bg-[#facc15]' },
+  reading:    { label: '독서중',  tone: 'bg-[#06d6a0]/15 text-[#06d6a0] border-[#06d6a0]/30',   dot: 'bg-[#06d6a0] animate-pulse' },
+  discussion: { label: '토의중',  tone: 'bg-[#8b5cf6]/15 text-[#a78bfa] border-[#8b5cf6]/30',   dot: 'bg-[#a78bfa] animate-pulse' },
+  ended:      { label: '종료',    tone: 'bg-white/5 text-[#7a8a82] border-white/10',            dot: 'bg-[#7a8a82]' },
+  cancelled:  { label: '취소됨',  tone: 'bg-red-500/10 text-red-300 border-red-500/30',         dot: 'bg-red-400' },
+};
 
 export default function MeetGuestRoomPage() {
-  const params = useParams<{ meetupId: string }>()
-  const meetupId = params.meetupId
+  const params = useParams<{ meetupId: string }>();
+  const meetupId = params.meetupId;
 
-  const [guestId, setGuestId] = useState<string | null>(null)
-  const [meetup, setMeetup] = useState<Meetup | null>(null)
-  const [members, setMembers] = useState<MeetupMember[]>([])
-  const [bookTitle, setBookTitle] = useState("")
-  const [author, setAuthor] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [guestId, setGuestId] = useState<string | null>(null);
+  const [meetup, setMeetup] = useState<Meetup | null>(null);
+  const [members, setMembers] = useState<MeetupMember[]>([]);
+  const [bookTitle, setBookTitle] = useState('');
+  const [author, setAuthor] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return
-    setGuestId(window.localStorage.getItem(GUEST_KEY))
-  }, [])
+    if (typeof window === 'undefined') return;
+    setGuestId(window.localStorage.getItem(GUEST_KEY));
+  }, []);
 
   const fetchSnapshot = useCallback(async () => {
-    if (!meetupId) return
-    setError(null)
+    if (!meetupId) return;
+    setError(null);
     try {
-      const res = await fetch(`/api/meetups/${meetupId}`)
-      const text = await res.text()
+      const res = await fetch(`/api/meetups/${meetupId}`);
+      const text = await res.text();
       if (!res.ok) {
-        setError(text || `오류 (${res.status})`)
-        return
+        setError(text || `오류 (${res.status})`);
+        return;
       }
-      const data = JSON.parse(text) as { meetup: Meetup; members: MeetupMember[] }
-      setMeetup(data.meetup)
-      setMembers(data.members)
+      const data = JSON.parse(text) as { meetup: Meetup; members: MeetupMember[] };
+      setMeetup(data.meetup);
+      setMembers(data.members);
     } catch {
-      setError("불러오기에 실패했습니다.")
+      setError('불러오기에 실패했습니다.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [meetupId])
+  }, [meetupId]);
 
   useEffect(() => {
-    fetchSnapshot()
-    const t = setInterval(fetchSnapshot, 4000)
-    return () => clearInterval(t)
-  }, [fetchSnapshot])
+    fetchSnapshot();
+    const t = setInterval(fetchSnapshot, POLL_MS);
+    return () => clearInterval(t);
+  }, [fetchSnapshot]);
 
   const myMember = useMemo(() => {
-    if (!guestId) return null
-    return members.find((m) => m.user_id === guestId) ?? null
-  }, [guestId, members])
+    if (!guestId) return null;
+    return members.find((m) => m.user_id === guestId) ?? null;
+  }, [guestId, members]);
+
+  const closed = meetup?.status === 'ended' || meetup?.status === 'cancelled';
 
   const onSaveBook = async (e: FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!guestId) {
-      setError("게스트 정보가 없습니다. /meet/join 에서 다시 참가해 주세요.")
-      return
+      setError('게스트 정보가 없습니다. /meet/join 에서 다시 참가해 주세요.');
+      return;
     }
-    if (meetup?.status === "ended" || meetup?.status === "cancelled") {
-      setError("종료된 모임입니다.")
-      return
+    if (closed) {
+      setError('종료된 모임입니다.');
+      return;
     }
-    const t = bookTitle.trim()
+    const t = bookTitle.trim();
     if (!t) {
-      setError("책 제목을 입력해 주세요.")
-      return
+      setError('책 제목을 입력해 주세요.');
+      return;
     }
-    setSaving(true)
-    setError(null)
+    setSaving(true);
+    setError(null);
     try {
       const res = await fetch(`/api/meetups/${meetupId}/me/book`, {
-        method: "PUT",
+        method: 'PUT',
         headers: {
-          "Content-Type": "application/json",
-          "x-seoro-guest-id": guestId,
+          'Content-Type': 'application/json',
+          'x-seoro-guest-id': guestId,
         },
         body: JSON.stringify({ book_title: t, author: author.trim() || null }),
-      })
-      const text = await res.text()
+      });
+      const text = await res.text();
       if (!res.ok) {
-        setError(text || `오류 (${res.status})`)
-        return
+        setError(text || `오류 (${res.status})`);
+        return;
       }
-      setBookTitle("")
-      setAuthor("")
-      await fetchSnapshot()
+      setBookTitle('');
+      setAuthor('');
+      await fetchSnapshot();
     } catch {
-      setError("저장에 실패했습니다.")
+      setError('저장에 실패했습니다.');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
+
+  const onLeave = async () => {
+    const gid = guestId || '';
+    try {
+      if (gid) {
+        await fetch(`/api/meetups/${meetupId}`, {
+          method: 'DELETE',
+          headers: { 'x-seoro-guest-id': gid },
+        });
+      }
+    } catch {
+      // best effort
+    }
+    try {
+      window.localStorage.removeItem(GUEST_KEY);
+    } catch {
+      // ignore
+    }
+    setGuestId(null);
+    window.location.href = '/meet/join';
+  };
 
   if (!meetupId) {
-    return <p className="p-6 text-sm text-red-700">잘못된 주소입니다.</p>
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#0f1613] text-sm text-red-300">
+        잘못된 주소입니다.
+      </main>
+    );
   }
 
+  const statusMeta = meetup ? STATUS_META[meetup.status] : null;
+
   return (
-    <div className="mx-auto max-w-lg px-4 py-8">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <Link href="/meet/join" className="text-sm font-semibold text-[#1E3A2F]">
-          ← 참가 화면
-        </Link>
-        <button
-          type="button"
-          onClick={async () => {
-            const gid = guestId || ""
-            try {
-              if (gid) {
-                await fetch(`/api/meetups/${meetupId}`, {
-                  method: "DELETE",
-                  headers: { "x-seoro-guest-id": gid },
-                })
-              }
-            } catch {
-              // ignore
-            }
-            try {
-              window.localStorage.removeItem(GUEST_KEY)
-            } catch {
-              // ignore
-            }
-            setGuestId(null)
-            window.location.href = "/meet/join"
-          }}
-          className="rounded-xl border border-[#E8E8E0] bg-white px-3 py-2 text-sm font-bold text-[#C0392B]">
-          나가기
-        </button>
-      </div>
-      <h1 className="text-xl font-bold text-[#1A1A1A]">{meetup?.title ?? "Meetup"}</h1>
-      <p className="text-sm text-[#666666]">상태: {meetup?.status ?? "…"}</p>
-
-      <p className="mt-4 rounded-xl border border-[#E8E8E0] bg-white p-4 text-sm text-[#555555]">
-        보안상 초대코드는 모임장에게만 표시됩니다. 초대코드는 모임장에게 받아{" "}
-        <span className="font-semibold">/meet/join</span> 에서 입력해 주세요.
-      </p>
-      {meetup?.status === "ended" || meetup?.status === "cancelled" ? (
-        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">
-          모임이 종료되었습니다. 참가하려면 새 초대코드로 다시 입장해 주세요.
-        </p>
-      ) : null}
-
-      {!guestId ? (
-        <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          이 기기에 게스트 ID가 없습니다.{" "}
-          <Link href="/meet/join" className="font-semibold underline">
-            참가하기
+    <main className="min-h-screen bg-[#0f1613] text-[#e5efe9]">
+      <div className="mx-auto max-w-4xl px-4 py-6">
+        {/* Top bar */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            href="/meet/join"
+            className="text-xs font-semibold text-[#7a8a82] transition hover:text-[#06d6a0]"
+          >
+            ← 참가 화면
           </Link>
-          에서 다시 입장해 주세요.
-        </p>
-      ) : null}
+          <button
+            type="button"
+            onClick={onLeave}
+            className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+          >
+            나가기
+          </button>
+        </div>
 
-      <form onSubmit={onSaveBook} className="mt-6 rounded-2xl border border-[#E8E8E0] bg-white p-4">
-        <h2 className="text-base font-bold text-[#1A1A1A]">내가 읽는 책</h2>
-        <p className="mt-1 text-xs text-[#666666]">MVP: 제목·작가만 입력</p>
-        <input
-          className="mt-3 w-full rounded-xl border border-[#E8E8E0] bg-[#F7F7F2] px-3 py-2 text-[#1A1A1A]"
-          placeholder="책 제목"
-          value={bookTitle}
-          onChange={(ev) => setBookTitle(ev.target.value)}
-        />
-        <input
-          className="mt-2 w-full rounded-xl border border-[#E8E8E0] bg-[#F7F7F2] px-3 py-2 text-[#1A1A1A]"
-          placeholder="작가 (선택)"
-          value={author}
-          onChange={(ev) => setAuthor(ev.target.value)}
-        />
-        <button
-          type="submit"
-          disabled={saving || !guestId}
-          className="mt-3 w-full rounded-xl bg-[#1E3A2F] py-2.5 font-bold text-white disabled:opacity-50">
-          {saving ? "저장 중…" : "저장"}
-        </button>
-        {myMember?.book_title ? (
-          <p className="mt-2 text-xs text-[#666666]">
-            현재: {myMember.book_title}
-            {myMember.author ? ` / ${myMember.author}` : ""}
+        {/* Header */}
+        <header className="mb-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">
+              {meetup?.title ?? '…'}
+            </h1>
+            {statusMeta && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${statusMeta.tone}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
+                {statusMeta.label}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-[#506258]">
+            실시간 · {POLL_MS / 1000}초마다 갱신
           </p>
-        ) : null}
-      </form>
+        </header>
 
-      {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
+        {closed && (
+          <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            모임이 종료되었습니다. 다시 참가하려면 새 초대코드로 입장해 주세요.
+          </div>
+        )}
 
-      <div className="mt-6 rounded-2xl border border-[#E8E8E0] bg-white p-4">
-        <h2 className="text-base font-bold text-[#1A1A1A]">참여자</h2>
-        <p className="text-xs text-[#666666]">약 4초마다 갱신</p>
-        {loading ? <p className="mt-3 text-sm text-[#666666]">불러오는 중…</p> : null}
-        <ul className="mt-3 space-y-2">
-          {members.map((m) => (
-            <li key={m.member_id} className="rounded-lg bg-[#F7F7F2] px-3 py-2 text-sm">
-              <span className="font-semibold text-[#1A1A1A]">{m.nickname}</span>
-              <span className="text-[#888888]"> ({m.role})</span>
-              <div className="text-xs text-[#555555]">
-                {m.book_title ? `${m.book_title}${m.author ? ` / ${m.author}` : ""}` : "—"}
+        {!guestId && (
+          <div className="mb-6 rounded-lg border border-[#facc15]/30 bg-[#facc15]/10 px-4 py-3 text-sm text-[#fde68a]">
+            이 기기에 게스트 ID가 없습니다.{' '}
+            <Link href="/meet/join" className="font-semibold underline decoration-dotted">
+              참가하기
+            </Link>
+            에서 다시 입장해 주세요.
+          </div>
+        )}
+
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px]">
+          {/* Left: my book form */}
+          <section className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#7a8a82]">
+              내가 읽는 책
+            </div>
+            <div className="mb-4 text-[11px] text-[#506258]">제목과 작가를 적어 두면 다른 참여자에게 보여요.</div>
+            <form onSubmit={onSaveBook} className="flex flex-col gap-3">
+              <input
+                className="w-full rounded-lg border border-white/10 bg-[#0a1310] px-3.5 py-2.5 text-[#e5efe9] placeholder:text-[#364d44] focus:border-[#06d6a0]/60 focus:outline-none disabled:opacity-50"
+                placeholder="책 제목"
+                value={bookTitle}
+                onChange={(ev) => setBookTitle(ev.target.value)}
+                disabled={closed || !guestId}
+              />
+              <input
+                className="w-full rounded-lg border border-white/10 bg-[#0a1310] px-3.5 py-2.5 text-[#e5efe9] placeholder:text-[#364d44] focus:border-[#06d6a0]/60 focus:outline-none disabled:opacity-50"
+                placeholder="작가 (선택)"
+                value={author}
+                onChange={(ev) => setAuthor(ev.target.value)}
+                disabled={closed || !guestId}
+              />
+              <button
+                type="submit"
+                disabled={saving || !guestId || closed}
+                className="rounded-lg bg-[#06d6a0] px-4 py-2.5 text-sm font-semibold text-[#0f1613] transition hover:brightness-110 disabled:opacity-50"
+              >
+                {saving ? '저장 중…' : '저장'}
+              </button>
+              {myMember?.book_title && (
+                <p className="mt-1 text-xs text-[#7a8a82]">
+                  현재 내 책:{' '}
+                  <span className="text-[#06d6a0]">
+                    {myMember.book_title}
+                    {myMember.author ? ` / ${myMember.author}` : ''}
+                  </span>
+                </p>
+              )}
+            </form>
+
+            {error && (
+              <p className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
+                {error}
+              </p>
+            )}
+          </section>
+
+          {/* Right: presence list */}
+          <aside className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wider text-[#7a8a82]">
+                참여자
               </div>
-            </li>
-          ))}
-        </ul>
+              <span className="font-mono text-[11px] text-[#506258]">
+                {loading ? '…' : `${members.length}`}
+              </span>
+            </div>
+            {loading && members.length === 0 ? (
+              <p className="py-4 text-center text-xs text-[#506258]">불러오는 중…</p>
+            ) : members.length === 0 ? (
+              <p className="py-4 text-center text-xs text-[#506258]">아직 참여자가 없어요.</p>
+            ) : (
+              <ul className="space-y-2">
+                {members.map((m) => (
+                  <MemberRow key={m.member_id} member={m} isMe={m.user_id === guestId} />
+                ))}
+              </ul>
+            )}
+          </aside>
+        </div>
       </div>
-    </div>
-  )
+    </main>
+  );
+}
+
+function MemberRow({ member, isMe }: { member: MeetupMember; isMe: boolean }) {
+  const initial = member.nickname.trim().charAt(0).toUpperCase() || '?';
+  const roleBadge =
+    member.role === 'host' ? (
+      <span className="rounded-sm bg-[#06d6a0]/15 px-1 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-[#06d6a0]">
+        HOST
+      </span>
+    ) : member.role === 'guest' ? (
+      <span className="rounded-sm bg-white/5 px-1 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-[#7a8a82]">
+        GUEST
+      </span>
+    ) : null;
+
+  return (
+    <li
+      className={
+        'flex items-center gap-3 rounded-lg px-2 py-2 transition ' +
+        (isMe ? 'bg-[#06d6a0]/10' : 'hover:bg-white/[0.03]')
+      }
+    >
+      <div className="relative">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#06d6a0]/80 to-[#0a8766] text-xs font-bold text-[#0f1613]">
+          {initial}
+        </div>
+        <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full border-2 border-[#0f1613] bg-[#06d6a0]" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 truncate">
+          <span className="truncate text-sm font-semibold text-[#e5efe9]">
+            {member.nickname}
+          </span>
+          {roleBadge}
+          {isMe && (
+            <span className="text-[10px] font-semibold text-[#06d6a0]">· 나</span>
+          )}
+        </div>
+        <div className="truncate text-[11px] text-[#7a8a82]">
+          {member.book_title ? (
+            <>
+              📖 {member.book_title}
+              {member.author && <span className="text-[#506258]"> · {member.author}</span>}
+            </>
+          ) : (
+            <span className="text-[#506258]">책 미지정</span>
+          )}
+        </div>
+      </div>
+    </li>
+  );
 }

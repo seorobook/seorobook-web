@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 
 /** Better Auth originCheck trusts NEON_AUTH_BASE_URL origin — not localhost when the request is synthetic. */
@@ -93,6 +94,25 @@ export function cookieHeaderFromSetCookieLines(setCookies: string[]): string {
     byName.set(name, pair)
   }
   return [...byName.values()].join("; ")
+}
+
+/**
+ * Forward all Set-Cookie headers from a Neon Auth response to a NextResponse.
+ *
+ * The Neon Auth auth handler already produces correctly-attributed cookies
+ * (HttpOnly, Secure, SameSite, Path, Expires/Max-Age). Forwarding them
+ * verbatim preserves those attributes instead of re-parsing and re-issuing
+ * cookies with a hand-rolled attribute set (the old monkey-patch approach).
+ *
+ * - Native clients read the `cookie` field from the JSON body (SecureStore).
+ * - Expo web / browser clients receive these Set-Cookie headers and the
+ *   browser cookie jar is updated so subsequent `credentials: "include"`
+ *   requests carry the session automatically.
+ */
+export function forwardAuthCookies(source: Response, target: NextResponse): void {
+  for (const line of getSetCookieLines(source)) {
+    if (line) target.headers.append("Set-Cookie", line)
+  }
 }
 
 export async function fetchJsonWithSession(origin: string, cookieHeader: string) {

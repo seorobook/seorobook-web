@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "aspect": 0.462,
+  "scene_url": "/rooms/default/scene.png",
+  "slots": [
+    {
+      "id": "telescope_main",
+      "kind": "system:telescope",
+      "label": "🔭 Telescope",
+      "polygon": [
+        [0.18, 0.08],
+        [0.70, 0.08],
+        [0.72, 0.12],
+        [0.72, 0.30],
+        [0.16, 0.30],
+        [0.16, 0.12]
+      ]
+    },
+    {
+      "id": "butler_main",
+      "kind": "system:butler",
+      "label": "🤖 Butler",
+      "polygon": [
+        [0.80, 0.28],
+        [0.90, 0.18],
+        [0.98, 0.28],
+        [0.90, 0.38]
+      ]
+    },
+    {
+      "id": "seat_1",
+      "kind": "companion:seat",
+      "label": "🪑 Seat 1",
+      "polygon": [
+        [0.02, 0.30],
+        [0.15, 0.26],
+        [0.22, 0.32],
+        [0.22, 0.60],
+        [0.02, 0.60]
+      ]
+    },
+    {
+      "id": "seat_2",
+      "kind": "companion:seat",
+      "label": "🪑 Seat 2",
+      "polygon": [
+        [0.82, 0.48],
+        [0.97, 0.46],
+        [0.99, 0.64],
+        [0.80, 0.66]
+      ]
+    },
+    {
+      "id": "me_main",
+      "kind": "system:me",
+      "label": "👤 Me",
+      "polygon": [
+        [0.30, 0.52],
+        [0.70, 0.52],
+        [0.78, 0.62],
+        [0.68, 0.72],
+        [0.32, 0.72],
+        [0.22, 0.62]
+      ]
+    },
+    {
+      "id": "record_main",
+      "kind": "system:record",
+      "label": "📝 Record",
+      "polygon": [
+        [0.38, 0.64],
+        [0.62, 0.64],
+        [0.62, 0.72],
+        [0.38, 0.72]
+      ]
+    }
+  ]
+}

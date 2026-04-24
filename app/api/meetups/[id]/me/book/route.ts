@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import { getMemberId, setMyBook } from "@/data/meetups"
 
 export const runtime = "nodejs"
@@ -18,7 +18,7 @@ export async function PUT(
 ) {
   try {
     const { id: meetupId } = await context.params
-    const { data: session } = await auth.getSession()
+    const session = await getSession(request)
     const userId = session?.user?.id ?? getGuestId(request)
     if (!userId) return new NextResponse("Auth required", { status: 401 })
 

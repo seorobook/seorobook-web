@@ -1,27 +1,32 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import {
-  cleanupExpiredGuests,
   getMeetupById,
   listMembersWithBooks,
   removeGuestFromMeetup,
   removeMemberFromMeetup,
 } from "@/data/meetups"
 
+export const runtime = "nodejs"
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    // Minimal TTL enforcement (best-effort, cheap enough for MVP)
-    await cleanupExpiredGuests().catch(() => null)
-
     const { id } = await context.params
     const meetup = await getMeetupById(id)
     if (!meetup) return new NextResponse("Not found", { status: 404 })
 
     const members = await listMembersWithBooks(id)
-    return NextResponse.json({ meetup, members })
+    return NextResponse.json(
+      { meetup, members },
+      {
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+        },
+      },
+    )
   } catch {
     return new NextResponse("Failed to load meetup", { status: 500 })
   }
@@ -42,7 +47,7 @@ export async function DELETE(
     }
 
     // Member leave (app): Neon Auth session
-    const { data: session } = await auth.getSession()
+    const session = await getSession(request)
     if (!session?.user) return new NextResponse("Unauthorized", { status: 401 })
 
     const removed = await removeMemberFromMeetup({ meetupId: id, userId: session.user.id })

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import { ensureProfile } from "@/data/profiles"
 import { createMeetup, getActiveMeetupForHost } from "@/data/meetups"
 
+export const runtime = "nodejs"
+
 export async function POST(request: Request) {
   try {
-    const { data: session } = await auth.getSession()
+    const session = await getSession(request)
     if (!session?.user) return new NextResponse("Unauthorized", { status: 401 })
 
     const body = await request.json().catch(() => null)

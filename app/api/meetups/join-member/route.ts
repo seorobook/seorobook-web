@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import { ensureProfile } from "@/data/profiles"
 import { addMember, getMeetupByInviteCode } from "@/data/meetups"
+
+export const runtime = "nodejs"
 
 function isInviteCode(code: string): boolean {
   return /^[A-Z0-9]{6,12}$/.test(code)
@@ -9,7 +11,7 @@ function isInviteCode(code: string): boolean {
 
 export async function POST(request: Request) {
   try {
-    const { data: session } = await auth.getSession()
+    const session = await getSession(request)
     if (!session?.user) return new NextResponse("Unauthorized", { status: 401 })
 
     const body = await request.json().catch(() => null)

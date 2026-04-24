@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import { applyMobileSessionCookies } from "@/lib/apply-mobile-session-cookies"
 import { ensureProfile } from "@/data/profiles"
 import {
   cookieHeaderFromSetCookieResponse,
   fetchJsonWithSession,
+  forwardAuthCookies,
   neonAuthPost,
 } from "@/lib/mobile-auth-forward"
 import { toMobileAuthUser } from "@/lib/mobile-auth-user"
@@ -61,7 +61,12 @@ export async function POST(request: Request) {
       cookie: cookieHeader,
       user,
     })
-    return applyMobileSessionCookies(res, cookieHeader)
+    // Forward the original Set-Cookie headers from Neon Auth verbatim.
+    // This preserves all security attributes (HttpOnly, Secure, SameSite, Expires)
+    // so browsers (Expo web) receive a properly-attributed session cookie instead
+    // of a manually re-issued one stripped of its attributes.
+    forwardAuthCookies(signInRes, res)
+    return res
   } catch {
     return NextResponse.json({ error: "Failed to sign in" }, { status: 500 })
   }

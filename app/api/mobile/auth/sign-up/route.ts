@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import { applyMobileSessionCookies } from "@/lib/apply-mobile-session-cookies"
 import { ensureProfile } from "@/data/profiles"
 import {
   cookieHeaderFromSetCookieResponse,
   fetchJsonWithSession,
+  forwardAuthCookies,
   neonAuthPost,
 } from "@/lib/mobile-auth-forward"
 import { toMobileAuthUser } from "@/lib/mobile-auth-user"
@@ -87,7 +87,8 @@ export async function POST(request: Request) {
       cookie: cookieHeader,
       user,
     })
-    return applyMobileSessionCookies(res, cookieHeader)
+    forwardAuthCookies(signUpRes, res)
+    return res
   } catch {
     return NextResponse.json({ error: "Failed to sign up" }, { status: 500 })
   }

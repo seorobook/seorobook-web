@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import { updateProfileNickname } from "@/data/profiles"
 
 export async function PATCH(request: Request) {
   try {
-    const { data: session } = await auth.getSession()
+    const session = await getSession(request)
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 })
     }

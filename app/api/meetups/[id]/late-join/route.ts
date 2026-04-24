@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import { ensureProfile } from "@/data/profiles"
 import { addMember, getMeetupById } from "@/data/meetups"
+
+export const runtime = "nodejs"
 
 function generateGuestId(): string {
   return `guest_${crypto.randomUUID()}`
@@ -12,7 +14,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { data: session } = await auth.getSession()
+    const session = await getSession(request)
     if (!session?.user) return new NextResponse("Unauthorized", { status: 401 })
 
     const { id } = await context.params

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/server-session"
 import { getMeetupById, updateMeetupStatus } from "@/data/meetups"
+
+export const runtime = "nodejs"
 
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { data: session } = await auth.getSession()
+    const session = await getSession(request)
     if (!session?.user) return new NextResponse("Unauthorized", { status: 401 })
 
     const { id } = await context.params

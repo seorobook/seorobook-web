@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getSession } from "@/lib/server-session"
 import { getProfileById } from "@/data/profiles"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getSession(request)
     if (!session?.user) {

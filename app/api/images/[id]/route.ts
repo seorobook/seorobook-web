@@ -10,7 +10,7 @@ type ImageRow = {
   content_type: string | null
 }
 
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getSession(request)
   if (!session?.user) return new NextResponse("Unauthorized", { status: 401 })
 
